@@ -1,0 +1,45 @@
+# Core
+python-dotenv
+requests
+tqdm
+
+# LLM & NLP
+openai>=1.0.0
+transformers>=4.40.0
+sentencepiece
+torch>=2.0.0
+
+# Text Processing
+nltk
+spacy
+beautifulsoup4
+
+# Data Handling
+pandas
+numpy
+
+# Backend / API
+flask
+flask-cors
+
+# File parsing
+python-docx
+PyPDF2
+
+# Orchestration / Agents
+langchain>=0.2.0
+langgraph
+pydantic
+
+# Utils
+rich
+colorama
+loguru
+
+# Tests
+pytest
+pytest-cov
+
+# Dev tools
+black
+flake8

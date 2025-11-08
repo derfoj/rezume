@@ -1,4 +1,18 @@
 #virtuel environnement 
 .rezume/
+.venv/
+.env
 #configuration vs code 
 .vscode/
+
+#fichier cache 
+__pycache__/
+
+*.pyc
+#base de données
+data/
+*.sqlite3
+.idea/
+
+#parametre local 
+outputs/

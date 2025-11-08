@@ -1,0 +1,52 @@
+{
+  "id": "user_001",
+  "name": "Paul Mouyebissi",
+  "title": "Étudiant en IA & Data (2ème année)",
+  "summary": "Étudiant en IA et Data, axé sur la data science, le machine learning et le développement backend. Expériences en stages analytiques et data science.",
+  "skills": [
+    "Python",
+    "SQL",
+    "Pandas",
+    "Scikit-learn",
+    "Machine Learning",
+    "Data Analysis",
+    "Docker",
+    "Flask",
+    "Git"
+  ],
+  "soft_skills": ["communication", "rigueur", "autonomie"],
+  "experiences": [
+    {
+      "id": "exp_01",
+      "title": "Assistant Data Analyst",
+      "company": "BA&SH",
+      "start_date": "2023-09",
+      "end_date": "2024-01",
+      "description": "Analyse de données clients, segmentation, rapports et visualisation."
+    },
+    {
+      "id": "exp_02",
+      "title": "Assistant Data Analyst",
+      "company": "Chips & Chicken",
+      "start_date": "2024-01",
+      "end_date": "2024-03",
+      "description": "Traitement ETL et reporting hebdomadaire."
+    },
+    {
+      "id": "exp_03",
+      "title": "Assistant Data Scientist",
+      "company": "Chapiock",
+      "start_date": "2024-07",
+      "end_date": "2024-08",
+      "description": "Modélisation, clustering et aide au déploiement."
+    }
+  ],
+  "education": [
+    {
+      "school": "Aivancity",
+      "degree": "Cycle ingénieur IA & Data",
+      "start_date": "2023-09",
+      "end_date": null
+    }
+  ]
+}
