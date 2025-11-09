@@ -16,3 +16,9 @@ data/
 
 #parametre local 
 outputs/
+
+#données 
+data/
+
+#gitignore
+*.gitignore
