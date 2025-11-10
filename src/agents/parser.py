@@ -12,7 +12,7 @@ class ParserAgent:
 
     def extract_information(self, offer_text: str) -> Dict:
         """
-        Nettoie et extrait des informations clés d'une offre (MVP rule-based).
+        Nettoie et extrait des informations clés d'une offre.
         Retourne dict: {'skills': [...], 'missions':[...], 'raw_text': str}
         """
         text = (offer_text or "").strip()
@@ -24,7 +24,13 @@ class ParserAgent:
         skills = [kw for kw in self.tech_keywords if kw in lower]
 
         # chercher phrases contenant verbes d'action usuels
-        missions = re.findall(r"(analyser|développer|implémenter|construire|créer|déployer|optimiser|nettoyer)[^\.]+", lower)
+        keywords = [
+            "analyser", "développer", "implémenter", "construire",
+            "créer","déployer","optimiser", "nettoyer", "contribuer","traitement"
+
+        ]
+        pattern = r"(" + "|".join(keywords) + r")[^\.]+"
+        missions = re.findall(pattern, lower)
         # garder les missions uniques et limitées
         missions = list(dict.fromkeys([m.strip() for m in missions]))[:8]
 
