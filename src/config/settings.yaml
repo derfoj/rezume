@@ -1,0 +1,12 @@
+llm_provider: "openai"  # le model utilisé
+model_name: "gpt-4o-mini"
+temperature: 0.3
+max_output_tokens: 800
+
+paths:
+  knowledge_base: "data/knowledge_base.json"
+  offers: "data/exemples_offres/exemple_offre.txt"
+  templates: "src/interfaces/prompts/cv_template.tex"
+  output_dir: "outputs/generated_cvs/"
+  parser_prompt: "src/config/prompts/parser.yaml"
+  generator_prompt: "src/config/prompts/generator.yaml"

@@ -1,0 +1,37 @@
+\documentclass[11pt]{article}
+\usepackage[english]{babel}
+\usepackage{fullpage}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+\begin{document}
+
+\begin{center}
+    {\LARGE \textbf{(( user.name ))}} \\[4pt]
+    \small (( user.email )) — (( user.phone ))
+\end{center}
+
+% ===================== SKILLS =====================
+\section*{Skills}
+\begin{itemize}
+(% for s in skills %)
+    \item (( s ))
+(% endfor %)
+\end{itemize}
+
+% ===================== EXPERIENCES =====================
+\section*{Experience}
+(% for exp in experiences %)
+\textbf{(( exp.title ))} — (( exp.company )) \\
+\textit{(( exp.date ))} \\
+
+\begin{itemize}
+    (% for line in exp.description %)
+        \item (( line ))
+    (% endfor %)
+\end{itemize}
+\vspace{6pt}
+(% endfor %)
+
+\end{document}

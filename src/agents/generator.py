@@ -1,47 +1,90 @@
+# src/agents/generator.py
 import os
-from jinja2 import Environment, FileSystemLoader, select_autoescape
-from typing import Dict, List
+import json
+import subprocess
+from jinja2 import Environment, FileSystemLoader
+from src.core.utils import load_yaml, load_text
+from src.core.llm_provider import get_llm
 
 class GeneratorAgent:
-    def __init__(self):
-        pass
+    def __init__(self, prompt_path: str):
+        self.prompt_cfg = load_yaml(prompt_path)
+        try:
+            self.llm = get_llm()
+        except NotImplementedError:
+            self.llm = None
 
-    def generate_cv(self,
-                    user_data: Dict,
-                    selected_experiences: List[Dict],
-                    template_path: str,
-                    output_path: str) -> str:
-        """
-        Rend le template Jinja2 avec user_data + selected_experiences.
-        - template_path peut être "data/cv_template.txt" (ou src/interfaces/...)
-        - output_path : fichier texte en sortie
-        """
-        # déterminer dossier template
-        template_dir, template_name = os.path.split(template_path)
-        if template_dir == "":
-            template_dir = "."
+    def generate_cv(self, user_data: dict, selected_experiences: list, template_path: str, output_path: str) -> str:
+        # Ensure output directory exists
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
+        # Render template with Jinja2 using custom delimiters
         env = Environment(
-            loader=FileSystemLoader(template_dir),
-            autoescape=select_autoescape()
+            loader=FileSystemLoader(os.path.dirname(template_path)),
+            block_start_string='(%',
+            block_end_string='%)',
+            variable_start_string='(( ',
+            variable_end_string=' ))',
+            comment_start_string='(#',
+            comment_end_string='#)'
         )
-        template = env.get_template(template_name)
 
-        # préparer context
+        template_name = os.path.basename(template_path)
+        tpl = env.get_template(template_name)
+
         context = {
-            "name": user_data.get("name"),
-            "title": user_data.get("title"),
-            "summary": user_data.get("summary"),
             "skills": user_data.get("skills", []),
-            "soft_skills": user_data.get("soft_skills", []),
             "experiences": selected_experiences,
-            "education": user_data.get("education", [])
+            "user": user_data
         }
 
-        rendered = template.render(**context)
+        rendered = tpl.render(**context)
 
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        # Optional LLM rewrite
+        if self.llm:
+            prompt = self.prompt_cfg["template"]
+            prompt = prompt.replace("{{user_profile}}", json.dumps(user_data, ensure_ascii=False))
+            prompt = prompt.replace("{{selected_experiences}}", json.dumps(selected_experiences, ensure_ascii=False))
+            prompt = prompt.replace("{{cv_template}}", rendered)
+            resp = self.llm.chat(prompt)
+            final_text = resp
+        else:
+            final_text = rendered
+
+        # Determine output format based on template extension
+        if template_path.endswith(".tex"):
+            base_output_name = os.path.splitext(os.path.basename(output_path))[0]
+            tex_out = os.path.join(os.path.dirname(output_path), f"{base_output_name}.tex")
+            pdf_out = os.path.join(os.path.dirname(output_path), f"{base_output_name}.pdf")
+
+            # write LaTeX
+            with open(tex_out, "w", encoding="utf-8") as f:
+                f.write(final_text)
+
+            # Compile LaTeX → PDF
+            try:
+                subprocess.run(["pdflatex", "-interaction=nonstopmode", "-output-directory",
+                                os.path.dirname(output_path), tex_out],
+                                check=True, capture_output=True)
+                subprocess.run(["pdflatex", "-interaction=nonstopmode", "-output-directory",
+                                os.path.dirname(output_path), tex_out],
+                                check=True, capture_output=True)
+            except subprocess.CalledProcessError as e:
+                print("LaTeX compilation failed:")
+                print("STDOUT:", e.stdout.decode())
+                print("STDERR:", e.stderr.decode())
+                raise RuntimeError("pdflatex error")
+
+            # Clean temp files
+            for ext in ['.aux', '.log', '.out', '.toc', '.synctex.gz']:
+                f = tex_out.replace(".tex", ext)
+                if os.path.exists(f):
+                    os.remove(f)
+
+            return pdf_out
+
+        # default text output
         with open(output_path, "w", encoding="utf-8") as f:
-            f.write(rendered)
+            f.write(final_text)
 
         return output_path

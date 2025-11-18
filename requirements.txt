@@ -6,6 +6,7 @@ tqdm
 # LLM & NLP
 openai>=1.0.0
 transformers>=4.40.0
+sentence-transformers
 sentencepiece
 torch>=2.0.0
 
@@ -27,9 +28,18 @@ python-docx
 PyPDF2
 
 # Orchestration / Agents
-langchain>=0.2.0
 langgraph
 pydantic
+langchain>=0.2.14
+langchain-openai>=0.1.6
+langchain-mistralai>=0.1.0
+langchain-google-genai>=0.1.0
+python-dotenv
+langchain-core 
+pyyaml
+openai
+tiktoken
+
 
 # Utils
 rich

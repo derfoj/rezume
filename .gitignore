@@ -17,8 +17,14 @@ data/
 #parametre local 
 outputs/
 
-#données 
-data/
+# convertisseur latex en python 
+rezume_miktex/
 
 #gitignore
 *.gitignore
+
+#erreurs files 
+erreur.txt
+
+# debug latex 
+debug.tex 

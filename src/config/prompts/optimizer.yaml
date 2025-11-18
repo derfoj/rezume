@@ -1,0 +1,11 @@
+name: "optimizer_agent"
+description: "Sélectionne les expériences les plus pertinentes pour une offre donnée."
+template: |
+  Tu es un conseiller RH. On te donne :
+  - un résumé de l'offre : {{offer_summary}}
+  - la liste des expériences utilisateur (JSON) : {{user_experiences}}
+
+  Retourne une liste JSON contenant au maximum 3 expériences les plus pertinentes, au format :
+  [
+    {"id": "...", "title": "...", "company": "...", "description":"...", "matched_skills":[...]}
+  ]

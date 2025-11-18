@@ -1,52 +1,77 @@
 {
-  "id": "user_001",
   "name": "Paul Mouyebissi",
-  "title": "Étudiant en IA & Data (2ème année)",
-  "summary": "Étudiant en IA et Data, axé sur la data science, le machine learning et le développement backend. Expériences en stages analytiques et data science.",
+  "title": "Stage Data Science 3-4 mois",
+  "summary": "Étudiant passionné par la science des données et l'intelligence artificielle, je recherche un stage stimulant pour appliquer mes compétences en analyse, modélisation et développement de solutions innovantes. Fort d'une expérience en projets concrets, je suis motivé à contribuer à la valorisation des données et à l'optimisation des processus métier.",
+  "email": "paulmouyebissi@gmail.com",
+  "portfolio_url": "https://paulmouyebissi-com-e638.vercel.app/",
+  "linkedin_url": "https://www.linkedin.com/in/mouyebissi-paul-655122285/",
+  "photo_path": "Firefly 20240423102924.png",
   "skills": [
     "Python",
-    "SQL",
     "Pandas",
-    "Scikit-learn",
+    "NumPy",
+    "Matplotlib",
+    "SQL",
+    "MySQL",
+    "SQLite",
+    "phpMyAdmin",
+    "MERISE",
+    "BeautifulSoup",
+    "Requests",
+    "R",
     "Machine Learning",
-    "Data Analysis",
-    "Docker",
-    "Flask",
-    "Git"
+    "Régression",
+    "Classification",
+    "Clustering",
+    "Scikit-learn"
   ],
-  "soft_skills": ["communication", "rigueur", "autonomie"],
+  "soft_skills": [
+    "Esprit d’analyse et de synthèse",
+    "Pensée critique",
+    "Attention aux détails",
+    "Communication efficace"
+  ],
   "experiences": [
     {
-      "id": "exp_01",
-      "title": "Assistant Data Analyst",
-      "company": "BA&SH",
-      "start_date": "2023-09",
-      "end_date": "2024-01",
-      "description": "Analyse de données clients, segmentation, rapports et visualisation."
+      "title": "Génération automatisée de SMS marketing avec l’IA",
+      "company": "Wellpack – AI Clinic",
+      "period": "Jan. 2024 -- Mar. 2024",
+      "description": "Conçu et implémenté un compteur de caractères et un moteur de troncature dynamique pour garantir des messages à minimum 160 caractères. Développé un workflow de génération de 3 variantes de SMS par requête, facilitant la comparaison d’efficacité via A/B testing. Créé un système d’export des messages générés dans un fichier JSON, servant de base à l’évaluation quantitative des performances du modèle. Intégré le prototype LLM avec une interface Flask, pilotée par Langchain/Ollama, et conteneurisé l’application sous Docker."
     },
     {
-      "id": "exp_02",
-      "title": "Assistant Data Analyst",
+      "title": "Analyse de Performance",
       "company": "Chips & Chicken",
-      "start_date": "2024-01",
-      "end_date": "2024-03",
-      "description": "Traitement ETL et reporting hebdomadaire."
+      "period": "Jan. 2024 -- Mar. 2024",
+      "description": "Conçu un tableau de bord interactif sous Power BI réduisant de 25% le temps d’analyse manuelle. Automatisé le nettoyage et le prétraitement de données clients et transactionnelles via SQL et Pandas. Exploré les tendances de ventes et identifié des leviers de performance à l’aide de visualisations avancées, facilitant la prise de décisions stratégiques."
     },
     {
-      "id": "exp_03",
-      "title": "Assistant Data Scientist",
-      "company": "Chapiock",
-      "start_date": "2024-07",
-      "end_date": "2024-08",
-      "description": "Modélisation, clustering et aide au déploiement."
+      "title": "Segmentation clients & Prédiction",
+      "company": "Projet personnel",
+      "period": "Avril 2025",
+      "description": "Segmentation de 3000+ clients et prédiction des ventes/prix immobiliers (KMeans, PCA, t-SNE, 87% de précision). Technologies : Python, Scikit-learn, Seaborn."
+    },
+    {
+      "title": "Analyse de sentiment Twitter",
+      "company": "Projet personnel",
+      "period": "Avril 2025",
+      "description": "Collecte et nettoyage de 1,6 M de tweets (suppression de URLs, mentions, emojis et stopwords). Prétraitement NLP : tokenisation, lemmatisation (NLTK), vectorisation TF-IDF. Modélisation avec régression logistique (train/test 80/20) – Accuracy : 87,7%, F1-score : 74,9%."
     }
   ],
   "education": [
     {
-      "school": "Aivancity",
-      "degree": "Cycle ingénieur IA & Data",
-      "start_date": "2023-09",
-      "end_date": null
+      "institution": "Aivancity School of AI & Data Science",
+      "period": "2023 - Présent",
+      "degree": "2 ème année Intelligence Artificielle et Science de Données"
+    },
+    {
+      "institution": "Lycée Jean Hilaire (Gabon)",
+      "period": "Juin 2022",
+      "degree": "Baccalauréat Scientifique (Mathématiques et Sciences Physiques)",
+      "mention": "Mention Assez Bien"
     }
+  ],
+  "languages": [
+    { "name": "Français", "level": "Natif" },
+    { "name": "Anglais", "level": "C1" }
   ]
 }
