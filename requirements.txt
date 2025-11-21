@@ -39,7 +39,7 @@ langchain-core
 pyyaml
 openai
 tiktoken
-
+Jinja2
 
 # Utils
 rich

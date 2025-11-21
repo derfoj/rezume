@@ -66,7 +66,11 @@ class OrchestratorAgent:
         print("\n🔹 Étape 3 — Création du CV...")
         user_data = load_json(self.knowledge_path)
 
-        out_path = os.path.join(self.output_dir, "cv_generated.pdf")
+        # Generate a unique filename with a timestamp
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out_path = os.path.join(self.output_dir, f"cv_generated_{timestamp}.pdf")
+        
         result_path = self.generator.generate_cv(user_data, selected, self.template_path, out_path)
 
         print(f"\n CV successfully generated → {result_path}\n")

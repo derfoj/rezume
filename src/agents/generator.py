@@ -2,7 +2,6 @@
 import os
 import json
 import subprocess
-from jinja2 import Environment, FileSystemLoader
 from src.core.utils import load_yaml, load_text
 from src.core.llm_provider import get_llm
 
@@ -15,76 +14,81 @@ class GeneratorAgent:
             self.llm = None
 
     def generate_cv(self, user_data: dict, selected_experiences: list, template_path: str, output_path: str) -> str:
-        # Ensure output directory exists
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        """
+        Generates the full LaTeX CV by calling the LLM with the complete context.
+        """
+        if not self.llm:
+            raise EnvironmentError("LLM not initialized. Cannot generate CV.")
 
-        # Render template with Jinja2 using custom delimiters
-        env = Environment(
-            loader=FileSystemLoader(os.path.dirname(template_path)),
-            block_start_string='(%',
-            block_end_string='%)',
-            variable_start_string='(( ',
-            variable_end_string=' ))',
-            comment_start_string='(#',
-            comment_end_string='#)'
-        )
+        print("🔹 Préparation du contexte pour l'IA générative...")
+        
+        # 1. Charger le contenu du template LaTeX
+        cv_template_content = load_text(template_path)
 
-        template_name = os.path.basename(template_path)
-        tpl = env.get_template(template_name)
-
-        context = {
-            "skills": user_data.get("skills", []),
-            "experiences": selected_experiences,
-            "user": user_data
+        # 2. Préparer les données d'entrée pour le prompt
+        # L'IA est responsable de la génération et de l'échappement des caractères LaTeX.
+        prompt_context = {
+            "user_profile": json.dumps(user_data, indent=2, ensure_ascii=False),
+            "selected_experiences": json.dumps(selected_experiences, indent=2, ensure_ascii=False),
+            "cv_template": cv_template_content
         }
 
-        rendered = tpl.render(**context)
+        # 3. Construire le prompt final en remplaçant les placeholders manuellement
+        final_prompt = self.prompt_cfg['template']
+        final_prompt = final_prompt.replace("{{user_profile}}", prompt_context["user_profile"])
+        final_prompt = final_prompt.replace("{{selected_experiences}}", prompt_context["selected_experiences"])
+        final_prompt = final_prompt.replace("{{cv_template}}", prompt_context["cv_template"])
 
-        # Optional LLM rewrite
-        if self.llm:
-            prompt = self.prompt_cfg["template"]
-            prompt = prompt.replace("{{user_profile}}", json.dumps(user_data, ensure_ascii=False))
-            prompt = prompt.replace("{{selected_experiences}}", json.dumps(selected_experiences, ensure_ascii=False))
-            prompt = prompt.replace("{{cv_template}}", rendered)
-            resp = self.llm.chat(prompt)
-            final_text = resp
-        else:
-            final_text = rendered
+        print("🔹 Appel de l'IA pour la génération du contenu du CV...")
+        # 4. Appeler l'IA pour générer le code LaTeX
+        generated_latex_code = self.llm.chat(final_prompt)
 
-        # Determine output format based on template extension
-        if template_path.endswith(".tex"):
-            base_output_name = os.path.splitext(os.path.basename(output_path))[0]
-            tex_out = os.path.join(os.path.dirname(output_path), f"{base_output_name}.tex")
-            pdf_out = os.path.join(os.path.dirname(output_path), f"{base_output_name}.pdf")
+        # Nettoyage simple pour s'assurer que le code est pur
+        generated_latex_code = generated_latex_code.strip()
+        if generated_latex_code.startswith("```latex"):
+            generated_latex_code = generated_latex_code[len("```latex"):].strip()
+        if generated_latex_code.endswith("```"):
+            generated_latex_code = generated_latex_code[:-len("```")].strip()
+        
+        print("🔹 Compilation du PDF final...")
+        # 5. Compilation du PDF
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        base_output_name = os.path.splitext(os.path.basename(output_path))[0]
+        output_dir = os.path.abspath(os.path.dirname(output_path))
+        tex_out = os.path.join(output_dir, f"{base_output_name}.tex")
+        pdf_out = os.path.join(output_dir, f"{base_output_name}.pdf")
 
-            # write LaTeX
-            with open(tex_out, "w", encoding="utf-8") as f:
-                f.write(final_text)
+        with open(tex_out, "w", encoding="utf-8") as f:
+            f.write(generated_latex_code)
 
-            # Compile LaTeX → PDF
-            try:
-                subprocess.run(["pdflatex", "-interaction=nonstopmode", "-output-directory",
-                                os.path.dirname(output_path), tex_out],
-                                check=True, capture_output=True)
-                subprocess.run(["pdflatex", "-interaction=nonstopmode", "-output-directory",
-                                os.path.dirname(output_path), tex_out],
-                                check=True, capture_output=True)
-            except subprocess.CalledProcessError as e:
-                print("LaTeX compilation failed:")
-                print("STDOUT:", e.stdout.decode())
-                print("STDERR:", e.stderr.decode())
-                raise RuntimeError("pdflatex error")
+        cmd = [
+            "pdflatex",
+            "-interaction=nonstopmode",
+            f"-output-directory={output_dir}",
+            tex_out
+        ]
 
-            # Clean temp files
-            for ext in ['.aux', '.log', '.out', '.toc', '.synctex.gz']:
-                f = tex_out.replace(".tex", ext)
-                if os.path.exists(f):
-                    os.remove(f)
+        try:
+            # On compile deux fois pour s'assurer que la mise en page est bonne
+            subprocess.run(cmd, check=True, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+            subprocess.run(cmd, check=True, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+        except subprocess.CalledProcessError as e:
+            print("\n ERREUR CRITIQUE LATEX !")
+            print("Voici les dernières lignes du journal d'erreur (log) :")
+            print("-" * 30)
+            log_file_path = os.path.join(output_dir, f"{base_output_name}.log")
+            if os.path.exists(log_file_path):
+                with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as log_f:
+                    print("".join(log_f.readlines()[-20:]))
+            else:
+                print("Fichier log non trouvé.")
+            print("-" * 30)
+            raise RuntimeError(f"Échec de la compilation pdflatex. Vérifiez le fichier {tex_out} pour les erreurs.")
 
-            return pdf_out
+        # Nettoyage des fichiers temporaires
+        for ext in ['.aux', '.log', '.out', '.toc']:
+            temp_file = os.path.join(output_dir, f"{base_output_name}{ext}")
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
 
-        # default text output
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(final_text)
-
-        return output_path
+        return pdf_out

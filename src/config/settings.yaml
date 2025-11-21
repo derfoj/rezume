@@ -1,7 +1,7 @@
 llm_provider: "openai"  # le model utilisé
 model_name: "gpt-4o-mini"
 temperature: 0.3
-max_output_tokens: 800
+max_output_tokens: 4000
 
 paths:
   knowledge_base: "data/knowledge_base.json"
