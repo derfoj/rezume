@@ -1,11 +1,18 @@
-#virtuel environnement 
+#virtuel environnement
 .rezume/
 .venv/
 .env
-#configuration vs code 
+#configuration vs code
 .vscode/
 
-#fichier cache 
+# front end
+*.py[cod]
+.web
+assets/external/
+*.db
+.states
+__pycache__/
+#fichier cache
 __pycache__/
 
 *.pyc
@@ -14,17 +21,19 @@ data/
 *.sqlite3
 .idea/
 
-#parametre local 
+#parametre local
 outputs/
 
-# convertisseur latex en python 
+# convertisseur latex en python
 rezume_miktex/
 
 #gitignore
 *.gitignore
 
-#erreurs files 
+#erreurs files
 erreur.txt
 
 ev.txt
+#fichier qui resume les changements dasn le projets
+resumer.txt
 

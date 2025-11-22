@@ -1,11 +1,12 @@
 {
   "name": "Paul Mouyebissi",
-  "title": "Stage Data Science 3-4 mois",
-  "summary": "Étudiant passionné par la science des données et l'intelligence artificielle, je recherche un stage stimulant pour appliquer mes compétences en analyse, modélisation et développement de solutions innovantes. Fort d'une expérience en projets concrets, je suis motivé à contribuer à la valorisation des données et à l'optimisation des processus métier.",
+  "title": "Recherche Alternance en Data Sciences / IA   ",
+  "summary": "Étudiant en 3 ème année d'intelligence artificielle et Sciences de données, je comptes dans mes points fort des compétence en modélisation et développement de solutions d'automatisation des processus métier grace à l'ia. Mon raisonnement critique qui me permet de resoudre les problematique avec des solutions à moindre coup et efficace",
   "email": "paulmouyebissi@gmail.com",
   "portfolio_url": "https://paulmouyebissi-com-e638.vercel.app/",
   "linkedin_url": "https://www.linkedin.com/in/mouyebissi-paul-655122285/",
-  "photo_path": "Firefly 20240423102924.png",
+  "photo_path": "data/img/Firefly 20240423102924.png",
+
   "skills": [
     "Python",
     "Pandas",
@@ -23,26 +24,30 @@
     "Régression",
     "Classification",
     "Clustering",
-    "Scikit-learn"
+    "Scikit-learn",
+    "CI-CD",
+    "Versionning via Github",
+    "Docker"
   ],
   "soft_skills": [
     "Esprit d’analyse et de synthèse",
     "Pensée critique",
     "Attention aux détails",
-    "Communication efficace"
+    "Communication efficace",
+    "Excellente Gestion du temps"
   ],
   "experiences": [
     {
       "title": "Génération automatisée de SMS marketing avec l’IA",
       "company": "Wellpack – AI Clinic",
       "period": "Jan. 2024 -- Mar. 2024",
-      "description": "Conçu et implémenté un compteur de caractères et un moteur de troncature dynamique pour garantir des messages à minimum 160 caractères. Développé un workflow de génération de 3 variantes de SMS par requête, facilitant la comparaison d’efficacité via A/B testing. Créé un système d’export des messages générés dans un fichier JSON, servant de base à l’évaluation quantitative des performances du modèle. Intégré le prototype LLM avec une interface Flask, pilotée par Langchain/Ollama, et conteneurisé l’application sous Docker."
+      "description": "J'ai été en charge d'implémenté un compteur de caractères et un moteur de troncature dynamique pour garantir des messages à minimum 160 caractères. Développé un workflow de génération de 3 variantes de SMS par requête, facilitant la comparaison d’efficacité via A/B testing. Créé un système d’export des messages générés dans un fichier JSON, servant de base à l’évaluation quantitative des performances du modèle"
     },
     {
       "title": "Analyse de Performance",
       "company": "Chips & Chicken",
       "period": "Jan. 2024 -- Mar. 2024",
-      "description": "Conçu un tableau de bord interactif sous Power BI réduisant de 25% le temps d’analyse manuelle. Automatisé le nettoyage et le prétraitement de données clients et transactionnelles via SQL et Pandas. Exploré les tendances de ventes et identifié des leviers de performance à l’aide de visualisations avancées, facilitant la prise de décisions stratégiques."
+      "description": "J'ai conçu un tableau de bord interactif sous Power BI réduisant de 25% le temps d’analyse manuelle. Automatisé le nettoyage et le prétraitement de données clients et transactionnelles via SQL et Pandas. Exploré les tendances de ventes et identifié des leviers de performance à l’aide de visualisations avancées, facilitant la prise de décisions stratégiques."
     },
     {
       "title": "Segmentation clients & Prédiction",
@@ -61,7 +66,7 @@
     {
       "institution": "Aivancity School of AI & Data Science",
       "period": "2023 - Présent",
-      "degree": "2 ème année Intelligence Artificielle et Science de Données"
+      "degree": "3 ème année Intelligence Artificielle et Science de Données"
     },
     {
       "institution": "Lycée Jean Hilaire (Gabon)",

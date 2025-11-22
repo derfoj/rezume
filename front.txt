@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>reZume - White Lab Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        /* THEME: WHITE LAB */
+        body {
+            background-color: #ffffff;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 20px 20px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #475569;
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .tech-accent { color: #2563eb; }
+    </style>
+</head>
+<body class="h-screen overflow-hidden flex flex-col p-8">
+
+    <div class="max-w-6xl mx-auto w-full grid grid-cols-12 gap-6 h-full">
+        <!-- Header -->
+        <div class="col-span-12 flex justify-between items-end mb-2 border-b border-gray-200 pb-4">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900 tracking-tighter">reZume_v1.0</h1>
+                <p class="text-xs tech-accent mt-1 tracking-widest font-bold">/// SYSTEM ONLINE /// WHITE MODE</p>
+            </div>
+            <div class="flex items-center space-x-2">
+                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span class="text-xs text-green-600 font-bold">CONNECTED</span>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-span-3 glass-panel p-6 flex flex-col items-center text-center h-[600px]">
+            <div class="w-24 h-24 rounded-full border-2 border-blue-200 p-1 mb-4 bg-white">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" class="rounded-full">
+            </div>
+            <h3 class="text-slate-900 font-bold text-lg">John Doe</h3>
+            <p class="text-xs tech-accent mb-6 font-bold">Full Stack Engineer</p>
+            
+            <div class="w-full text-left space-y-3">
+                <div class="text-[10px] uppercase text-gray-400 tracking-widest font-bold">Database Stats</div>
+                <div class="flex justify-between items-center bg-white border border-gray-100 p-2 rounded shadow-sm">
+                    <span class="text-xs">XP Vectors</span>
+                    <span class="tech-accent font-bold">12</span>
+                </div>
+                <div class="flex justify-between items-center bg-white border border-gray-100 p-2 rounded shadow-sm">
+                    <span class="text-xs">Skills</span>
+                    <span class="text-purple-600 font-bold">48</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Console -->
+        <div class="col-span-6 flex flex-col gap-6">
+            <!-- Input -->
+            <div class="glass-panel p-6">
+                <label class="text-xs text-slate-500 mb-2 block tracking-widest font-bold">TARGET INPUT STREAM</label>
+                <textarea class="w-full bg-white border border-gray-300 rounded p-3 text-sm focus:border-blue-500 outline-none h-32 font-mono text-slate-700 shadow-inner" placeholder="Paste raw job data here..."></textarea>
+            </div>
+
+            <!-- Logs -->
+            <div class="glass-panel p-4 flex-1 bg-white border border-gray-200 font-mono text-xs overflow-hidden relative shadow-inner">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-30"></div>
+                <p class="text-green-600 font-bold">> Initializing Orchestrator...</p>
+                <p class="text-slate-500">> Parsing text stream...</p>
+                <p class="text-purple-600 font-bold">> Match found: ID_EXP_04 (Score: 0.89)</p>
+                <p class="text-blue-600 animate-pulse font-bold">> Waiting for user command_</p>
+            </div>
+            
+            <button class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-all font-bold tracking-widest uppercase rounded-lg text-sm">
+                Initialize Generation sequence
+            </button>
+        </div>
+
+        <!-- Visualization -->
+        <div class="col-span-3 glass-panel p-6 flex flex-col items-center justify-center">
+            <div class="relative w-40 h-40 flex items-center justify-center mb-6">
+                <svg class="w-full h-full transform -rotate-90">
+                    <circle cx="80" cy="80" r="70" stroke="#e2e8f0" stroke-width="10" fill="transparent" />
+                    <circle cx="80" cy="80" r="70" stroke="#2563eb" stroke-width="10" fill="transparent" stroke-dasharray="440" stroke-dashoffset="100" stroke-linecap="round" />
+                </svg>
+                <div class="absolute text-2xl font-bold text-slate-800">78%</div>
+            </div>
+            <div class="text-center">
+                <h4 class="text-blue-600 font-bold">Semantic Match</h4>
+                <p class="text-xs text-gray-500 mt-2">Vector distance analysis.</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -24,14 +24,20 @@ def _make_openai_client(model_name: str, temperature: float, max_tokens: int):
             self.temperature = temp
             self.max_tokens = max_tokens
 
-        def chat(self, prompt: str) -> str:
+        def chat(self, prompt: str, json_mode: bool = False) -> str:
             messages = [{"role": "user", "content": prompt}]
-            resp = client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-            )
+            
+            request_params = {
+                "model": self.model,
+                "messages": messages,
+                "temperature": self.temperature,
+                "max_tokens": self.max_tokens,
+            }
+
+            if json_mode:
+                request_params["response_format"] = {"type": "json_object"}
+
+            resp = client.chat.completions.create(**request_params)
             # Extraction sécurisée du contenu
             if not resp.choices or len(resp.choices) == 0:
                 return ""
