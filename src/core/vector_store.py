@@ -17,7 +17,7 @@ model = SentenceTransformer(MODEL_NAME)
 def build_vector_store(experiences: List[Dict[str, Any]], index_name: str = "kb_index"):
     """
     Builds and saves a FAISS index using cosine similarity (Inner Product)
-    and a corresponding JSON data file for experiences.
+    and a corresponding JSON data file for experiences, with embeddings included.
     """
     if not experiences:
         logger.warning("No experiences provided to build vector store.")
@@ -28,23 +28,25 @@ def build_vector_store(experiences: List[Dict[str, Any]], index_name: str = "kb_
     index_path = os.path.join(EMBEDDINGS_DIR, f"{index_name}.faiss")
     data_path = os.path.join(EMBEDDINGS_DIR, f"{index_name}.json")
 
-    # Create text representations for embedding
     experience_texts = [f"{exp.get('title', '')}: {exp.get('description', '')}" for exp in experiences]
 
-    # Generate and normalize embeddings for cosine similarity
     logger.info(f"Generating embeddings for {len(experience_texts)} experiences...")
     embeddings = model.encode(experience_texts, convert_to_tensor=False, show_progress_bar=True)
     embeddings = np.array(embeddings, dtype=np.float32)
-    faiss.normalize_L2(embeddings)  # Normalize vectors for IP search
+    
+    # Store the embedding with the experience data
+    for i, exp in enumerate(experiences):
+        exp['embedding'] = embeddings[i].tolist() # Store as list for JSON serialization
 
-    # Build FAISS index for Inner Product (cosine similarity)
+    faiss.normalize_L2(embeddings)
+
     index = faiss.IndexFlatIP(embeddings.shape[1])
     index.add(embeddings)
     
     logger.info(f"Saving FAISS index to {index_path}")
     faiss.write_index(index, index_path)
     
-    logger.info(f"Saving experience data to {data_path}")
+    logger.info(f"Saving experience data with embeddings to {data_path}")
     with open(data_path, 'w', encoding='utf-8') as f:
         json.dump(experiences, f, ensure_ascii=False, indent=4)
 

@@ -1,8 +1,10 @@
 # src/core/orchestration.py
 import os
 import logging
+import numpy as np
 from pathlib import Path
 from dotenv import load_dotenv
+from thefuzz import process
 
 from src.agents.parser import ParserAgent
 from src.core.vector_store import search_vector_store, build_vector_store
@@ -21,8 +23,6 @@ def initialize_parser_agent():
     
     parser_agent = None
     try:
-        # The ParserAgent's __init__ will handle the logic of checking keys 
-        # and availability of the LLM.
         logger.info("Initializing ParserAgent...")
         parser_agent = ParserAgent(prompt_path="src/config/prompts/parser.yaml")
         logger.info("ParserAgent ready.")
@@ -33,22 +33,79 @@ def initialize_parser_agent():
 
 parser_agent = initialize_parser_agent()
 
-def _calculate_keyword_score(required_skills: list, experiences: list) -> float:
-    """Calculates a score based on the percentage of required skills found in experiences."""
-    if not required_skills or not experiences:
+def _calculate_fuzzy_keyword_score(required_skills: list, user_skills: list) -> float:
+    """
+    Calculates a score based on fuzzy matching of required skills against the user's skill list.
+    """
+    if not required_skills or not user_skills:
         return 0.0
 
-    found_skills = set()
-    experience_text = " ".join([
-        f"{exp.get('title', '')} {exp.get('description', '')}" 
-        for exp in experiences
-    ]).lower()
+    found_count = 0
+    user_skills_lower = {s.lower() for s in user_skills}
 
-    for skill in required_skills:
-        if skill.lower() in experience_text:
-            found_skills.add(skill.lower())
+    for req_skill in required_skills:
+        req_skill_lower = req_skill.lower()
+        
+        best_match, score = process.extractOne(req_skill_lower, user_skills_lower)
+        
+        if score > 85:
+            found_count += 1
+
+    return (found_count / len(required_skills)) * 100
+
+def _cosine_similarity(v1, v2):
+    """Calculates the cosine similarity between two vectors."""
+    v1 = np.array(v1)
+    v2 = np.array(v2)
+    norm_v1 = np.linalg.norm(v1)
+    norm_v2 = np.linalg.norm(v2)
+    if norm_v1 == 0 or norm_v2 == 0:
+        return 0.0 # Or raise an error, depending on desired behavior
+    return np.dot(v1, v2) / (norm_v1 * norm_v2)
+
+def _diversify_results(
+    results: list, 
+    threshold: float = 0.95, 
+    top_n: int = 3
+) -> list:
+    """
+    Diversifies a list of search results based on embedding similarity
+    to avoid returning overly similar experiences.
+    """
+    if not results:
+        return []
+
+    diverse_results = []
     
-    return (len(found_skills) / len(required_skills)) * 100
+    for result in results:
+        if len(diverse_results) >= top_n:
+            break
+
+        is_too_similar = False
+        current_embedding_list = result.get('embedding')
+        if current_embedding_list is None:
+            logger.warning("Result missing embedding, skipping for diversification.")
+            continue
+        current_embedding = np.array(current_embedding_list)
+
+        for diverse_res in diverse_results:
+            diverse_embedding_list = diverse_res.get('embedding')
+            if diverse_embedding_list is None:
+                logger.warning("Diverse result missing embedding, skipping comparison.")
+                continue
+            diverse_embedding = np.array(diverse_embedding_list)
+            
+            similarity = _cosine_similarity(current_embedding, diverse_embedding)
+            
+            if similarity > threshold:
+                is_too_similar = True
+                logger.info(f"Skipping similar experience (similarity: {similarity:.2f})")
+                break
+        
+        if not is_too_similar:
+            diverse_results.append(result)
+            
+    return diverse_results
 
 # --- ANALYSIS PIPELINE ---
 def run_analysis_pipeline(raw_text: str) -> dict:
@@ -64,7 +121,8 @@ def run_analysis_pipeline(raw_text: str) -> dict:
 
         logger.info(f"Starting analysis for job offer ({len(raw_text)} characters).")
         
-        # 1. Extraction from text
+        profile = load_knowledge_base()
+        
         parsed = parser_agent.extract_information(raw_text)
         if not isinstance(parsed, dict) or "skills" not in parsed:
             raise ValueError("Failed to get structured data from the parsing agent.")
@@ -72,37 +130,39 @@ def run_analysis_pipeline(raw_text: str) -> dict:
         skills_from_offer = parsed.get("skills", [])
         missions = parsed.get("missions", [])
         
-        # 2. Vector Search
         query_str = f"Skills: {', '.join(skills_from_offer)}. Missions: {' '.join(missions)}"
         
-        embedding_file = Path("data/embeddings/kb_index.faiss")
+        embedding_file = KNOWLEDGE_BASE_PATH.parent / "embeddings" / "kb_index.faiss" # Correct path
         if not embedding_file.exists():
             logger.warning("Embedding index not found. Building a new one.")
-            profile = load_knowledge_base()
             if profile and profile.experiences:
                 experiences_as_dicts = [exp.__dict__ for exp in profile.experiences]
                 build_vector_store(experiences_as_dicts, "kb_index")
         
-        matches = search_vector_store(query_str, index_name="kb_index", top_n=3)
+        initial_matches = search_vector_store(query_str, index_name="kb_index", top_n=10)
+        
+        matches = _diversify_results(initial_matches, top_n=3)
 
-        # 3. Hybrid Scoring and Formatting
         bullet_points = []
         final_score = 0
+        
+        keyword_score = _calculate_fuzzy_keyword_score(skills_from_offer, profile.skills)
 
         if matches:
             vector_scores = [m.get('match_score', 0) for m in matches]
-            avg_vector_score = sum(vector_scores) / len(vector_scores) if vector_scores else 0
-            keyword_score = _calculate_keyword_score(skills_from_offer, matches)
-            weighted_score = (avg_vector_score * 100 * 0.6) + (keyword_score * 0.4)
+            semantic_score = (sum(vector_scores) / len(vector_scores)) * 100 if vector_scores else 0
+            weighted_score = (semantic_score * 0.6) + (keyword_score * 0.4)
             final_score = max(0, min(100, int(weighted_score)))
 
             for m in matches:
+                m.pop('embedding', None)
                 desc = m.get('description', '').split('.')[0]
                 bullet_points.append(f"{m.get('title')}: {desc}...")
         else:
-            bullet_points = ["No relevant experiences found in the knowledge base."]
+            final_score = max(0, min(100, int(keyword_score)))
+            bullet_points = ["No highly relevant experiences found via semantic search, but some skills may match."]
 
-        summary_text = f"Profile match: {final_score}% based on hybrid analysis."
+        summary_text = f"Profile match: {final_score}% based on a hybrid analysis of semantic experience relevance and direct skill matching."
         
         logger.info(f"Analysis complete. Final score: {final_score}")
 
@@ -119,3 +179,4 @@ def run_analysis_pipeline(raw_text: str) -> dict:
     except Exception as e:
         logger.error(f"An unexpected error occurred in the analysis pipeline: {e}", exc_info=True)
         raise ValueError("An unexpected error occurred during analysis.")
+
