@@ -1,24 +1,62 @@
-# src/models/schemas.py
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
-
-class Offer(BaseModel):
-    id: Optional[str]
-    raw_text: str
-    cleaned_text: Optional[str] = None
-    parsed: Optional[Dict[str, Any]] = None
-
-class Experience(BaseModel):
-    id: Optional[str]
-    title: Optional[str]
-    company: Optional[str]
-    start_date: Optional[str]
-    end_date: Optional[str]
-    description: Optional[str]
-
-class KnowledgeBase(BaseModel):
-    id: str
-    name: str
-    title: Optional[str]
-    skills: List[str] = []
-    experiences: List[Experience] = []
+KNOWLEDGE_BASE_SCHEMA = {
+    "type": "object",
+    "required": [
+        "name", "title", "summary", "email", "portfolio_url", "linkedin_url",
+        "photo_path", "skills", "soft_skills", "experiences", "education", "languages"
+    ],
+    "properties": {
+        "name": {"type": "string"},
+        "title": {"type": "string"},
+        "summary": {"type": "string"},
+        "email": {"type": "string", "format": "email"},
+        "portfolio_url": {"type": "string", "format": "uri"},
+        "linkedin_url": {"type": "string", "format": "uri"},
+        "photo_path": {"type": "string"},
+        "skills": {
+            "type": "array",
+            "items": {"type": "string"}
+        },
+        "soft_skills": {
+            "type": "array",
+            "items": {"type": "string"}
+        },
+        "experiences": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["title", "company", "period", "description"],
+                "properties": {
+                    "title": {"type": "string"},
+                    "company": {"type": "string"},
+                    "period": {"type": "string"},
+                    "description": {"type": "string"}
+                }
+            }
+        },
+        "education": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["institution", "degree", "period"],
+                "properties": {
+                    "institution": {"type": "string"},
+                    "degree": {"type": "string"},
+                    "period": {"type": "string"},
+                    "mention": {"type": "string", "nullable": True}
+                }
+            }
+        },
+        "languages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["name", "level"],
+                "properties": {
+                    "name": {"type": "string"},
+                    "level": {"type": "string"}
+                }
+            }
+        }
+    },
+    "additionalProperties": False
+}

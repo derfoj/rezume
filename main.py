@@ -1,4 +1,3 @@
-# main.py
 import sys
 from dotenv import load_dotenv
 from src.agents.orchestrator import OrchestratorAgent

@@ -22,6 +22,7 @@ numpy
 # Backend / API
 flask
 flask-cors
+jsonschema
 
 # File parsing
 python-docx

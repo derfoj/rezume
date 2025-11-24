@@ -1,0 +1,26 @@
+[
+    {
+        "title": "Génération automatisée de SMS marketing avec l’IA",
+        "company": "Wellpack – AI Clinic",
+        "period": "Jan. 2024 -- Mar. 2024",
+        "description": "J'ai été en charge d'implémenté un compteur de caractères et un moteur de troncature dynamique pour garantir des messages à minimum 160 caractères. Développé un workflow de génération de 3 variantes de SMS par requête, facilitant la comparaison d’efficacité via A/B testing. Créé un système d’export des messages générés dans un fichier JSON, servant de base à l’évaluation quantitative des performances du modèle"
+    },
+    {
+        "title": "Analyse de Performance",
+        "company": "Chips & Chicken",
+        "period": "Jan. 2024 -- Mar. 2024",
+        "description": "J'ai conçu un tableau de bord interactif sous Power BI réduisant de 25% le temps d’analyse manuelle. Automatisé le nettoyage et le prétraitement de données clients et transactionnelles via SQL et Pandas. Exploré les tendances de ventes et identifié des leviers de performance à l’aide de visualisations avancées, facilitant la prise de décisions stratégiques."
+    },
+    {
+        "title": "Segmentation clients & Prédiction",
+        "company": "Projet personnel",
+        "period": "Avril 2025",
+        "description": "Segmentation de 3000+ clients et prédiction des ventes/prix immobiliers (KMeans, PCA, t-SNE, 87% de précision). Technologies : Python, Scikit-learn, Seaborn."
+    },
+    {
+        "title": "Analyse de sentiment Twitter",
+        "company": "Projet personnel",
+        "period": "Avril 2025",
+        "description": "Collecte et nettoyage de 1,6 M de tweets (suppression de URLs, mentions, emojis et stopwords). Prétraitement NLP : tokenisation, lemmatisation (NLTK), vectorisation TF-IDF. Modélisation avec régression logistique (train/test 80/20) – Accuracy : 87,7%, F1-score : 74,9%."
+    }
+]

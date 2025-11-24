@@ -1,17 +1,17 @@
 {
   "name": "Paul Mouyebissi",
-  "title": "Recherche Alternance en Data Sciences / IA   ",
-  "summary": "Étudiant en 3 ème année d'intelligence artificielle et Sciences de données, je comptes dans mes points fort des compétence en modélisation et développement de solutions d'automatisation des processus métier grace à l'ia. Mon raisonnement critique qui me permet de resoudre les problematique avec des solutions à moindre coup et efficace",
+  "title": "Recherche Alternance en Data Sciences / IA",
+  "summary": "Étudiant en 3ème année d'intelligence artificielle et Sciences de données, je compte dans mes points forts des compétences en modélisation et développement de solutions d'automatisation des processus métier grâce à l'IA. Mon raisonnement critique me permet de résoudre les problématiques avec des solutions à moindre coût et efficaces.",
   "email": "paulmouyebissi@gmail.com",
   "portfolio_url": "https://paulmouyebissi-com-e638.vercel.app/",
   "linkedin_url": "https://www.linkedin.com/in/mouyebissi-paul-655122285/",
   "photo_path": "data/img/Firefly 20240423102924.png",
-
   "skills": [
     "Python",
     "Pandas",
     "NumPy",
     "Matplotlib",
+    "Seaborn",
     "SQL",
     "MySQL",
     "SQLite",
@@ -21,8 +21,10 @@
     "Requests",
     "R",
     "Machine Learning",
+    "Time Series Analaysis (ARIMA)",
     "Régression",
     "Classification",
+    "Random Forest",
     "Clustering",
     "Scikit-learn",
     "CI-CD",
@@ -34,14 +36,33 @@
     "Pensée critique",
     "Attention aux détails",
     "Communication efficace",
-    "Excellente Gestion du temps"
+    "Excellente Gestion du temps",
+    "Ecoute attentive"
   ],
   "experiences": [
+    {
+      "title": "Prédiction du Bitcoin & Séries Temporelles",
+      "company": "Projet Personnel",
+      "period": "Juin 2025",
+      "description": "Analyse et prévision du cours du Bitcoin. Mise en œuvre comparative de modèles de lissage (Moyenne Mobile Simple/SMA) et de modèles statistiques avancés (ARIMA) pour l'analyse de séries temporelles. Tests de stationnarité (Dickey-Fuller), analyse des résidus et évaluation de la précision des prédictions (RMSE)."
+    },
+    {
+      "title": "Prédiction de Churn & Analyse RFM (E-commerce)",
+      "company": "Projet Personnel (Données Olist)",
+      "period": "Mai 2025",
+      "description": "Développement complet d'un pipeline de Machine Learning pour prédire l'attrition client. Fusion de datasets relationnels complexes (Commandes/Paiements) et Feature Engineering basé sur la méthode RFM. Identification et correction critique de fuites de données (Data Leakage) entre Récence et Ancienneté. Modélisation via Random Forest, validée par courbes ROC-AUC et matrices de confusion."
+    },
+    {
+      "title": "Développement d'un Studio de Thèmes VS Code",
+      "company": "Projet Open Source (VS Code Theme Studio)",
+      "period": "Mars 2025",
+      "description": "Conception et développement d'une application web (VS Code Theme Studio) permettant la création et la personnalisation intuitive de thèmes pour l'IDE. Implémentation d'une interface dynamique pour la manipulation et la génération de fichiers JSON complexes (tokens de syntaxe). Optimisation de l'expérience développeur (DX) en simplifiant l'édition des configurations graphiques."
+    },
     {
       "title": "Génération automatisée de SMS marketing avec l’IA",
       "company": "Wellpack – AI Clinic",
       "period": "Jan. 2024 -- Mar. 2024",
-      "description": "J'ai été en charge d'implémenté un compteur de caractères et un moteur de troncature dynamique pour garantir des messages à minimum 160 caractères. Développé un workflow de génération de 3 variantes de SMS par requête, facilitant la comparaison d’efficacité via A/B testing. Créé un système d’export des messages générés dans un fichier JSON, servant de base à l’évaluation quantitative des performances du modèle"
+      "description": "J'ai été en charge d'implémenter un compteur de caractères et un moteur de troncature dynamique pour garantir des messages à minimum 160 caractères. Développé un workflow de génération de 3 variantes de SMS par requête, facilitant la comparaison d’efficacité via A/B testing. Créé un système d’export des messages générés dans un fichier JSON, servant de base à l’évaluation quantitative des performances du modèle."
     },
     {
       "title": "Analyse de Performance",

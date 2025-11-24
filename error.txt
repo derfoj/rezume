@@ -1,0 +1,76 @@
+C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume> & C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Scripts\Activate.ps1
+(.rezume) PS C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume> python api.py 
+Warning: ParserAgent init failed (LLM config missing?): OPENAI_API_KEY non défini dans les variables d'environnement.
+C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\api.py:46: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Will watch for changes in these directories: ['C:\\Users\\andyl\\OneDrive\\Desktop\\Coding_for_AI\\reZume']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [32832] using WatchFiles
+Warning: ParserAgent init failed (LLM config missing?): OPENAI_API_KEY non défini dans les variables d'environnement.
+Warning: ParserAgent init failed (LLM config missing?): OPENAI_API_KEY non défini dans les variables d'environnement.
+INFO:     Started server process [16844]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:65040 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65040 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57689 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+ Received offer analysis request (2749 chars)
+INFO:     127.0.0.1:57689 - "POST /api/analyze HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 403, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\fastapi\applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\starlette\middleware\cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\starlette\middleware\cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\fastapi\routing.py", line 125, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\fastapi\routing.py", line 111, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\fastapi\routing.py", line 391, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\.rezume\Lib\site-packages\fastapi\routing.py", line 290, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andyl\OneDrive\Desktop\Coding_for_AI\reZume\api.py", line 72, in analyze_offer
+    parsed_data = parser_agent.extract_information(request.raw_text)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'extract_information'
