@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import paulAvatar from './assets/paul_avatar.png';
 import { 
   Zap, 
   CheckCircle, 
@@ -249,7 +250,7 @@ export default function CVBuilderApp() {
         <div className="col-span-1 lg:col-span-3 glass-panel p-6 flex flex-col items-center text-center h-auto">
           <div className="relative mb-6">
             <div className="w-24 h-24 rounded-full border-2 border-blue-200 p-1 bg-white">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Avatar" className="rounded-full" />
+              <img src={paulAvatar} alt="Avatar" className="rounded-full" />
             </div>
             <div className="absolute bottom-1 right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow border border-blue-100">
                 <Activity size={14} className="text-green-500" />
