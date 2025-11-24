@@ -54,7 +54,7 @@ reZume/
 
 1.  **Clonez le dépôt :**
     ```bash
-    git clone https://github.com/votre-username/reZume.git
+    git clone https://github.com/derfoj/reZume.git
     cd reZume
     ```
 
