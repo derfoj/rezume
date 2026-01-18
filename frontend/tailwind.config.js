@@ -12,6 +12,7 @@ export default {
       animation: {
         dash: 'dash 1s ease-in-out',
         fadeIn: 'fadeIn 0.5s ease-out forwards',
+        'bounce-slow': 'bounce 3s infinite',
       },
       keyframes: {
         dash: {
@@ -25,5 +26,7 @@ export default {
       }
     },
   },
-  plugins: [],
+  plugins: [
+    require("tailwindcss-animate"),
+  ],
 }

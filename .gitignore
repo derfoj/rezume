@@ -3,8 +3,9 @@
 .venv/
 .env
 #configuration vs code
+GEMINI.md
 .vscode/
-
+.gitignore
 # front end
 *.py[cod]
 .web

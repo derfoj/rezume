@@ -1,0 +1,49 @@
+template: |
+  Tu es un expert en recrutement et en analyse de données. Ta mission est d'extraire les informations d'un CV à partir d'un texte brut et de les structurer au format JSON strict.
+
+  TEXTE DU CV :
+  ---
+  {{cv_text}}
+  ---
+
+  RÈGLES D'EXTRACTION :
+  1. Retourne UNIQUEMENT un objet JSON valide. Pas de texte avant ou après.
+  2. Si une information est manquante, utilise une chaîne vide "" ou une liste vide [].
+  3. Les dates doivent être au format "Mois Année" (ex: "Janvier 2022") ou juste "Année".
+  4. Pour les compétences, sépare les Hard Skills (techniques) des Soft Skills (comportementales).
+
+  STRUCTURE JSON ATTENDUE :
+  {
+    "full_name": "Prénom Nom",
+    "title": "Titre professionnel actuel",
+    "summary": "Bref résumé du profil",
+    "linkedin_url": "URL LinkedIn si trouvée",
+    "portfolio_url": "URL Portfolio si trouvée",
+    "experiences": [
+      {
+        "title": "Titre du poste",
+        "company": "Nom de l'entreprise",
+        "start_date": "Date de début",
+        "end_date": "Date de fin ou 'Présent'",
+        "description": "Description détaillée des missions et réalisations"
+      }
+    ],
+    "education": [
+      {
+        "institution": "Nom de l'école/université",
+        "degree": "Nom du diplôme",
+        "start_date": "Date de début",
+        "end_date": "Date de fin",
+        "mention": "Mention si spécifiée",
+        "description": "Détails optionnels"
+      }
+    ],
+    "skills": ["Compétence Technique 1", "Compétence Technique 2"],
+    "soft_skills": ["Soft Skill 1", "Soft Skill 2"],
+    "languages": [
+      {
+        "name": "Langue",
+        "level": "Niveau (ex: Natif, Courant, Intermédiaire)"
+      }
+    ]
+  }

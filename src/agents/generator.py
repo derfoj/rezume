@@ -8,17 +8,17 @@ from typing import List, Dict, Any
 
 from src.core.utils import load_yaml, load_text
 from src.core.llm_provider import get_llm
-from src.config.constants import CV_TEMPLATE_PATH
+from src.config.constants import TEMPLATES_DIR
 
 class GeneratorAgent:
     """
     An agent responsible for generating the final LaTeX CV by calling an LLM
     with a complete context, then compiling the result to PDF.
     """
-    def __init__(self):
+    def __init__(self, provider: str = None, model: str = None, api_key: str = None):
         try:
-            self.llm = get_llm()
-            print("✅ GeneratorAgent prêt et connecté au LLM.")
+            self.llm = get_llm(provider=provider, model=model, user_api_key=api_key)
+            print(f"✅ GeneratorAgent prêt ({provider or 'default'}/{model or 'default'}).")
         except Exception as e:
             self.llm = None
             print(f"❌ Erreur lors de l'init du GeneratorAgent: {e}")
@@ -38,7 +38,7 @@ class GeneratorAgent:
         
         return code
 
-    def generate_cv_from_llm(self, user_profile: Dict[str, Any], experiences: List[Dict[str, Any]]) -> (str, str):
+    def generate_cv_from_llm(self, user_profile: Dict[str, Any], experiences: List[Dict[str, Any]], template_name: str = "classic") -> (str, str):
         """
         Generates a PDF CV using the LLM-as-a-template-engine approach.
         
@@ -48,8 +48,14 @@ class GeneratorAgent:
         if not self.llm:
             raise RuntimeError("GeneratorAgent non initialisé, impossible de générer le CV.")
 
-        print("🔹 Préparation du contexte pour la génération par LLM...")
-        cv_template_content = load_text(CV_TEMPLATE_PATH)
+        print(f"🔹 Préparation du contexte pour la génération par LLM (Template: {template_name})...")
+        
+        template_path = TEMPLATES_DIR / f"{template_name}.tex"
+        if not template_path.exists():
+            print(f"⚠️ Template '{template_name}' introuvable. Fallback sur 'classic'.")
+            template_path = TEMPLATES_DIR / "classic.tex"
+
+        cv_template_content = load_text(template_path)
         
         prompt_template = load_yaml("src/config/prompts/generator.yaml")['template']
         

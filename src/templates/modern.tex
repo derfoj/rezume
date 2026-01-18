@@ -1,0 +1,83 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage[margin=2cm]{geometry}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{fontawesome5}
+\usepackage{hyperref}
+
+% --- Couleurs ---
+\definecolor{primary}{RGB}{41, 128, 185} % Un bleu moderne
+\definecolor{darkgrey}{RGB}{50, 50, 50}
+
+% --- Polices et Styles ---
+\renewcommand{\familydefault}{\sfdefault} % Sans-serif pour un look moderne
+
+% Titres de section
+\titleformat{\section}
+{\Large\bfseries\color{primary}\uppercase}
+{}{0em}{}[\titlerule]
+\titlespacing{\section}{0pt}{12pt}{8pt}
+
+% Titres de sous-section (Postes)
+\titleformat{\subsection}
+{\large\bfseries\color{darkgrey}}
+{}{0em}{}
+
+% --- Commandes perso ---
+\newcommand{\entry}[4]{
+  \noindent\textbf{#1} \hfill {\color{gray}\small #2} \\
+  {\color{primary}\textit{#3}} \par
+  \vspace{0.2em}
+  #4
+  \vspace{0.8em}
+}
+
+\begin{document}
+
+% --- En-tête ---
+\begin{center}
+    {\Huge\bfseries\color{primary} {{name}} } \\ \vspace{0.2cm}
+    {\Large\color{darkgrey} {{title}} } \\ \vspace{0.4cm}
+    
+    \small
+    \faEnvelope \space {{email}} \quad | \quad
+    \faLinkedin \space \href{{{linkedin_url}}}{LinkedIn} \quad | \quad
+    \faGlobe \space \href{{{portfolio_url}}}{Portfolio}
+\end{center}
+
+\vspace{0.5cm}
+
+% --- Résumé ---
+\section*{Profil}
+{{summary}}
+
+% --- Expériences ---
+\section*{Expériences Professionnelles}
+
+% Exemple de structure que l'IA doit générer pour chaque expérience
+% \entry{Titre du poste}{Date début - Date fin}{Entreprise, Lieu}{
+%  \begin{itemize}[leftmargin=*, noitemsep]
+%    \item Tâche 1 réalisée...
+%    \item Tâche 2 réalisée...
+%  \end{itemize}
+% }
+
+{{experiences_content}}
+
+% --- Formation ---
+\section*{Formation}
+{{education_content}}
+
+% --- Compétences ---
+\section*{Compétences}
+\begin{itemize}[leftmargin=*, label=\faCheckCircle, itemsep=2pt]
+    \item \textbf{Expertise Technique:} {{hard_skills}}
+    \item \textbf{Soft Skills:} {{soft_skills}}
+    \item \textbf{Langues:} {{languages}}
+\end{itemize}
+
+\end{document}

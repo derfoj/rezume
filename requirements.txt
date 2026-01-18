@@ -2,19 +2,23 @@
 python-dotenv
 requests
 tqdm
+pyyaml
 
 # LLM & NLP
 openai>=1.0.0
+anthropic
+groq
+google-generativeai
 transformers>=4.40.0
 sentence-transformers
 sentencepiece
 torch>=2.0.0
+tiktoken
 
 # Text Processing
 nltk
 spacy
 beautifulsoup4
-thefuzz[speedup]
 thefuzz[speedup]
 
 # Data Handling
@@ -22,13 +26,19 @@ pandas
 numpy
 
 # Backend / API
-flask
-flask-cors
-jsonschema
+fastapi
+uvicorn
+python-multipart
+sqlalchemy
+alembic
+passlib[argon2]
+python-jose[cryptography]
 
 # File parsing
 python-docx
-PyPDF2
+pypdf
+llama-parse
+llama-index-core
 
 # Orchestration / Agents
 langgraph
@@ -36,12 +46,7 @@ pydantic
 langchain>=0.2.14
 langchain-openai>=0.1.6
 langchain-mistralai>=0.1.0
-langchain-google-genai>=0.1.0
-python-dotenv
 langchain-core 
-pyyaml
-openai
-tiktoken
 Jinja2
 
 # Utils
@@ -56,4 +61,3 @@ pytest-cov
 # Dev tools
 black
 flake8
-reflex

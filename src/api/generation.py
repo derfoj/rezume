@@ -2,14 +2,19 @@
 import os
 import logging
 from typing import List, Any, Dict
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session
+from src.core.database import get_db
 
 # --- Local Imports ---
 from src.core.api_models import CVGenerationRequest
 from src.agents.generator import GeneratorAgent
-from src.core.knowledge_base import load_knowledge_base, Profile
-from src.config.constants import KNOWLEDGE_BASE_PATH
+from src.core.knowledge_base import get_profile_from_db, Profile
+from src.api.profile import get_current_user
+from src.models.user import User
+from src.config.constants import TEMPLATES_DIR
+import json
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -45,22 +50,45 @@ def _profile_to_dict(profile: Profile) -> Dict[str, Any]:
         "languages": [lang.__dict__ for lang in profile.languages],
     }
 
+@router.get("/templates")
+def get_templates():
+    """Returns the list of available CV templates."""
+    metadata_path = TEMPLATES_DIR / "metadata.json"
+    if metadata_path.exists():
+        with open(metadata_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return []
+
 @router.post("/generate-cv")
-async def generate_cv_endpoint(request: CVGenerationRequest, background_tasks: BackgroundTasks):
+async def generate_cv_endpoint(
+    request: CVGenerationRequest, 
+    background_tasks: BackgroundTasks, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Generates a PDF CV using the LLM-based Generator Agent and returns it for download.
     """
     try:
         # 1. Load and validate the user profile
-        user_profile = load_knowledge_base(KNOWLEDGE_BASE_PATH)
+        user_profile = get_profile_from_db(db, user_id=current_user.id)
         
         # 2. Instantiate the agent and generate the CV
-        generator = GeneratorAgent()
+        # Pass user LLM preferences
+        generator = GeneratorAgent(
+            provider=current_user.llm_provider,
+            model=current_user.llm_model,
+            api_key=current_user.openai_api_key if current_user.llm_provider == "openai" else None 
+            # Note: For Anthropic/Gemini, we haven't added specific API key columns yet, 
+            # assuming env vars or re-using openai_key field (not ideal) or we can add them later.
+            # For now, let's rely on .env for non-OpenAI keys unless user wants to add them to DB.
+        )
         user_profile_dict = _profile_to_dict(user_profile)
         
         pdf_path, tex_path = generator.generate_cv_from_llm(
             user_profile=user_profile_dict,
-            experiences=request.experiences
+            experiences=request.experiences,
+            template_name=current_user.selected_template or "classic"
         )
         
         # 3. Schedule temporary files for cleanup (including the .tex file)

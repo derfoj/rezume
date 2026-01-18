@@ -8,7 +8,8 @@ from thefuzz import process
 
 from src.agents.parser import ParserAgent
 from src.core.vector_store import search_vector_store, build_vector_store
-from src.core.knowledge_base import load_knowledge_base
+from src.core.knowledge_base import get_profile_from_db
+from sqlalchemy.orm import Session
 from src.config.constants import KNOWLEDGE_BASE_PATH
 
 # Configure logging for this module
@@ -108,7 +109,7 @@ def _diversify_results(
     return diverse_results
 
 # --- ANALYSIS PIPELINE ---
-def run_analysis_pipeline(raw_text: str) -> dict:
+def run_analysis_pipeline(raw_text: str, db: Session = None, user_id: int = 1) -> dict:
     """
     Runs the full analysis pipeline on a raw job offer text.
     """
@@ -121,7 +122,10 @@ def run_analysis_pipeline(raw_text: str) -> dict:
 
         logger.info(f"Starting analysis for job offer ({len(raw_text)} characters).")
         
-        profile = load_knowledge_base()
+        if not db:
+            raise ValueError("Database session is required for analysis.")
+            
+        profile = get_profile_from_db(db, user_id)
         
         parsed = parser_agent.extract_information(raw_text)
         if not isinstance(parsed, dict) or "skills" not in parsed:
@@ -132,16 +136,50 @@ def run_analysis_pipeline(raw_text: str) -> dict:
         
         query_str = f"Skills: {', '.join(skills_from_offer)}. Missions: {' '.join(missions)}"
         
-        embedding_file = KNOWLEDGE_BASE_PATH.parent / "embeddings" / "kb_index.faiss" # Correct path
-        if not embedding_file.exists():
-            logger.warning("Embedding index not found. Building a new one.")
-            if profile and profile.experiences:
-                experiences_as_dicts = [exp.__dict__ for exp in profile.experiences]
-                build_vector_store(experiences_as_dicts, "kb_index")
+        index_name = f"user_{user_id}"
+        embedding_file = KNOWLEDGE_BASE_PATH.parent / "embeddings" / f"{index_name}.faiss"
         
-        initial_matches = search_vector_store(query_str, index_name="kb_index", top_n=10)
+        if not embedding_file.exists():
+            logger.warning(f"Embedding index {index_name} not found. Building a new one for user {user_id}.")
+            if profile and profile.experiences:
+                # We need to construct documents with 'content' key as expected by build_vector_store
+                # Reuse recalculate logic or simpler just for experiences here as a fallback?
+                # Ideally we should call recalculate_user_embeddings but circular import risk or need DB session.
+                # Let's do a simple fallback rebuild using the profile data we have.
+                docs = []
+                for exp in profile.experiences:
+                    content = f"Experience: {exp.title} at {exp.company} ({exp.period}). {exp.description}"
+                    docs.append({"content": content, "metadata": exp.__dict__, "type": "experience"})
+                
+                build_vector_store(docs, index_name)
+        
+        initial_matches = search_vector_store(query_str, index_name=index_name, top_n=10)
         
         matches = _diversify_results(initial_matches, top_n=3)
+
+        # --- FALLBACK: KEYWORD MATCHING IF SEMANTIC SEARCH IS WEAK ---
+        if not matches and profile.experiences:
+            logger.info("Semantic search yielded no results. Attempting keyword-based fallback...")
+            fallback_matches = []
+            for exp in profile.experiences:
+                # Count matching skills in title/description
+                content_lower = f"{exp.title} {exp.description}".lower()
+                match_count = sum(1 for skill in skills_from_offer if skill.lower() in content_lower)
+                
+                if match_count > 0:
+                    fallback_matches.append({
+                        "title": exp.title,
+                        "company": exp.company,
+                        "period": exp.period,
+                        "description": exp.description,
+                        "keyword_score": match_count
+                    })
+            
+            # Sort by match count and take top 3
+            fallback_matches = sorted(fallback_matches, key=lambda x: x['keyword_score'], reverse=True)[:3]
+            if fallback_matches:
+                logger.info(f"Found {len(fallback_matches)} experiences via keyword fallback.")
+                matches = fallback_matches
 
         bullet_points = []
         final_score = 0
@@ -149,18 +187,21 @@ def run_analysis_pipeline(raw_text: str) -> dict:
         keyword_score = _calculate_fuzzy_keyword_score(skills_from_offer, profile.skills)
 
         if matches:
-            vector_scores = [m.get('match_score', 0) for m in matches]
-            semantic_score = (sum(vector_scores) / len(vector_scores)) * 100 if vector_scores else 0
+            # Calculate semantic score (use keyword_score if semantic vector scores are missing)
+            vector_scores = [m.get('match_score', 0) for m in matches if 'match_score' in m]
+            semantic_score = (sum(vector_scores) / len(vector_scores)) * 100 if vector_scores else 20 # Low default if fallback
+            
             weighted_score = (semantic_score * 0.6) + (keyword_score * 0.4)
             final_score = max(0, min(100, int(weighted_score)))
 
             for m in matches:
                 m.pop('embedding', None)
+                m.pop('keyword_score', None)
                 desc = m.get('description', '').split('.')[0]
                 bullet_points.append(f"{m.get('title')}: {desc}...")
         else:
             final_score = max(0, min(100, int(keyword_score)))
-            bullet_points = ["No highly relevant experiences found via semantic search, but some skills may match."]
+            bullet_points = ["Nous n'avons pas trouvé d'expérience correspondant exactement à cette offre dans votre historique, mais vos compétences semblent alignées. C'est peut-être l'occasion de mettre en avant vos projets personnels ou votre capacité d'apprentissage !"]
 
         summary_text = f"Profile match: {final_score}% based on a hybrid analysis of semantic experience relevance and direct skill matching."
         

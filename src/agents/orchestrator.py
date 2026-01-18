@@ -22,7 +22,7 @@ class OrchestratorAgent:
         generator_prompt_path = paths.get("generator_prompt")
 
         self.parser = ParserAgent(prompt_path=parser_prompt_path)
-        self.generator = GeneratorAgent(prompt_path=generator_prompt_path)
+        self.generator = GeneratorAgent()
 
         ensure_dir(self.output_dir)
 
@@ -71,7 +71,7 @@ class OrchestratorAgent:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         out_path = os.path.join(self.output_dir, f"cv_generated_{timestamp}.pdf")
         
-        result_path = self.generator.generate_cv(user_data, selected, self.template_path, out_path)
+        result_path, _ = self.generator.generate_cv_from_llm(user_data, selected)
 
         print(f"\n CV successfully generated → {result_path}\n")
         return result_path

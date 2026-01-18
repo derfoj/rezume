@@ -13,6 +13,6 @@ KNOWLEDGE_BASE_PATH = ROOT_DIR / "data" / "knowledge_base.json"
 EMBEDDINGS_DIR = ROOT_DIR / "data" / "embeddings"
 JOB_OFFERS_DIR = ROOT_DIR / "data" / "exemples_offres" / "exemple_offre.txt"
 GENERATED_CVS_DIR = ROOT_DIR / "outputs" / "generated_cvs"
-CV_TEMPLATE_PATH = ROOT_DIR / "src" / "interfaces" / "prompts" / "cv_template.tex"
+TEMPLATES_DIR = ROOT_DIR / "src" / "templates"
 
 MODEL_NAME = "text-embedding-3-small"
