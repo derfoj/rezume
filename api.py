@@ -14,10 +14,13 @@ logger = logging.getLogger(__name__)
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles # NEW
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import SQLAlchemyError
 from src.core.database import engine, Base
 from src.api import auth, analysis, generation, profile as profile_api
 from src.core.orchestration import parser_agent
+from src.core.error_handlers import global_exception_handler, database_exception_handler
 
 # --- Database Initialization ---
 # For development, we create tables on startup. In prod, use Alembic.
@@ -25,6 +28,11 @@ Base.metadata.create_all(bind=engine)
 
 # --- FastAPI App Initialization ---
 app = FastAPI(title="reZume API")
+
+# --- Static Files ---
+# Mount the uploads directory to serve images
+os.makedirs("data/img", exist_ok=True) # Ensure dir exists
+app.mount("/data/img", StaticFiles(directory="data/img"), name="images")
 
 # --- Middleware ---
 # Load allowed origins from environment variable or use defaults
@@ -38,6 +46,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Exception Handlers ---
+app.add_exception_handler(SQLAlchemyError, database_exception_handler)
+app.add_exception_handler(Exception, global_exception_handler)
 
 # --- Routers ---
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])

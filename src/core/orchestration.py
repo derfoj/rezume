@@ -197,8 +197,29 @@ def run_analysis_pipeline(raw_text: str, db: Session = None, user_id: int = 1) -
             for m in matches:
                 m.pop('embedding', None)
                 m.pop('keyword_score', None)
-                desc = m.get('description', '').split('.')[0]
-                bullet_points.append(f"{m.get('title')}: {desc}...")
+                
+                # --- NEW: Sentence-level extraction ---
+                # Find the sentence best matching the skills from offer
+                description = m.get('description', '')
+                doc_sentences = description.replace(';', '.').split('.') # Basic sentence splitting
+                
+                best_sentence = ""
+                max_hits = 0
+                
+                for sentence in doc_sentences:
+                    sentence_clean = sentence.strip()
+                    if len(sentence_clean) < 10: continue
+                    
+                    hits = sum(1 for skill in skills_from_offer if skill.lower() in sentence_clean.lower())
+                    if hits > max_hits:
+                        max_hits = hits
+                        best_sentence = sentence_clean
+                
+                if best_sentence:
+                     bullet_points.append(f"{m.get('title')}: {best_sentence}...")
+                else:
+                    # Fallback to first sentence if no keyword hit found
+                    bullet_points.append(f"{m.get('title')}: {description.split('.')[0]}...")
         else:
             final_score = max(0, min(100, int(keyword_score)))
             bullet_points = ["Nous n'avons pas trouvé d'expérience correspondant exactement à cette offre dans votre historique, mais vos compétences semblent alignées. C'est peut-être l'occasion de mettre en avant vos projets personnels ou votre capacité d'apprentissage !"]

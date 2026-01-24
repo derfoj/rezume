@@ -43,6 +43,10 @@ const GlobalStyles = () => (
       background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
       background-size: 20px 20px;
     }
+    .dark .bg-white-lab {
+      background-color: transparent;
+      background-image: radial-gradient(#1e293b 1px, transparent 1px);
+    }
     .glass-panel {
       background: rgba(255, 255, 255, 0.7);
       backdrop-filter: blur(10px);
@@ -50,7 +54,14 @@ const GlobalStyles = () => (
       border-radius: 0.75rem;
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
+    .dark .glass-panel {
+      background: rgba(15, 23, 42, 0.6); /* Slate-900 with opacity */
+      border-color: #334155; /* Slate-700 */
+      color: #e2e8f0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
     .tech-accent { color: #2563eb; }
+    .dark .tech-accent { color: #60a5fa; }
     .animate-dash { transition: stroke-dashoffset 1s ease-in-out; }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -79,21 +90,21 @@ const TerminalLog = ({ logs }) => {
   }, [logs]);
 
   return (
-    <div className="glass-panel p-4 h-48 overflow-hidden relative flex flex-col shadow-inner bg-white/50 font-mono">
+    <div className="glass-panel p-4 h-48 overflow-hidden relative flex flex-col shadow-inner bg-white/50 dark:bg-slate-900/50 font-mono">
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-30"></div>
-      <div className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-2 border-b border-slate-100 pb-1 flex justify-between">
+      <div className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold mb-2 border-b border-slate-100 dark:border-slate-800 pb-1 flex justify-between">
         <span>System Logs</span>
         <span className="text-green-500">● LIVE</span>
       </div>
       <div ref={scrollRef} className="flex-1 overflow-y-auto text-xs space-y-1.5 no-scrollbar">
         {logs.map((log) => (
           <p key={log.id} className="animate-fadeIn text-left">
-            <span className="text-slate-400 mr-2">{'>'}</span>
-            <span className={`font-bold ${log.type === 'success' ? 'text-green-600' :
-              log.type === 'process' ? 'text-purple-600' :
-                log.type === 'error' ? 'text-red-500' :
-                  log.type === 'wait' ? 'text-blue-600 animate-pulse' :
-                    'text-slate-500'
+            <span className="text-slate-400 dark:text-slate-600 mr-2">{'>'}</span>
+            <span className={`font-bold ${log.type === 'success' ? 'text-green-600 dark:text-green-400' :
+              log.type === 'process' ? 'text-purple-600 dark:text-purple-400' :
+                log.type === 'error' ? 'text-red-500 dark:text-red-400' :
+                  log.type === 'wait' ? 'text-blue-600 dark:text-blue-400 animate-pulse' :
+                    'text-slate-500 dark:text-slate-400'
               }`}>
               {log.text}
             </span>
@@ -114,49 +125,50 @@ const ScoreWidget = ({ score, t }) => {
     <div className="glass-panel p-6 flex flex-col items-center justify-center h-full relative overflow-hidden">
       <div className="relative w-40 h-40 flex items-center justify-center mb-4 z-10">
         <svg className="w-full h-full transform -rotate-90">
-          <circle cx="80" cy="80" r={radius} stroke="#e2e8f0" strokeWidth="10" fill="transparent" />
+          <circle cx="80" cy="80" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent" className="text-slate-200 dark:text-slate-800" />
           <circle
-            cx="80" cy="80" r={radius} stroke="#2563eb" strokeWidth="10" fill="transparent"
+            cx="80" cy="80" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent"
             strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round"
-            className="animate-dash transition-all duration-1000 ease-out"
+            className="animate-dash transition-all duration-1000 ease-out text-blue-600 dark:text-blue-500"
           />
         </svg>
         <div className="absolute flex flex-col items-center">
-          <span className="text-3xl font-bold text-slate-800">{sanitizedScore}%</span>
+          <span className="text-3xl font-bold text-slate-800 dark:text-white">{sanitizedScore}%</span>
         </div>
       </div>
       <div className="text-center z-10">
-        <h4 className="text-blue-600 font-bold uppercase tracking-wider text-sm">{t.builder.widget.title}</h4>
-        <p className="text-xs text-gray-500 mt-1">{t.builder.widget.subtitle}</p>
+        <h4 className="text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider text-sm">{t.builder.widget.title}</h4>
+        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{t.builder.widget.subtitle}</p>
       </div>
     </div>
   );
 };
 
 const StatItem = ({ label, value, colorClass }) => (
-  <div className="flex justify-between items-center bg-white/80 border border-gray-100 p-3 rounded-lg shadow-sm w-full">
-    <span className="text-xs text-slate-500 font-medium">{label}</span>
+  <div className="flex justify-between items-center bg-white/80 dark:bg-slate-900/80 border border-gray-100 dark:border-slate-800 p-3 rounded-lg shadow-sm w-full">
+    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{label}</span>
     <span className={`${colorClass} font-bold font-mono`}>{value}</span>
   </div>
 );
 
 export default function CVBuilderApp() {
-  const { token, logout, user } = useAuth(); // Get user from context
+  const { token, logout, user, theme } = useAuth(); // Get user and theme from context
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const isDark = theme === 'dark';
 
   // Ensure robust language selection
   const lang = (user?.language && translations[user.language]) ? user.language : 'fr';
   const t = translations[lang];
 
-  console.log("CVBuilderApp mounting...", { user, lang, t });
+  console.log("CVBuilderApp mounting...", { user, lang, t, theme });
 
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
-  
+
   const [score, setScore] = useState(0);
   const [logs, setLogs] = useState(INITIAL_LOGS);
   const [results, setResults] = useState(null);
@@ -214,7 +226,7 @@ export default function CVBuilderApp() {
     try {
       const response = await fetch(`${API_URL}/api/analyze`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
@@ -246,7 +258,7 @@ export default function CVBuilderApp() {
     try {
       const response = await fetch(`${API_URL}/api/generate-cv`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
@@ -277,7 +289,7 @@ export default function CVBuilderApp() {
     try {
       const response = await fetch(`${API_URL}/api/generate-cv`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
@@ -307,27 +319,27 @@ export default function CVBuilderApp() {
   };
 
   return (
-    <div className="bg-white-lab min-h-screen flex flex-col p-4 md:p-8 overflow-hidden text-slate-700 font-mono">
+    <div className="bg-white-lab dark:bg-transparent min-h-screen flex flex-col p-4 md:p-8 overflow-hidden text-slate-700 dark:text-slate-200 font-mono relative z-10 transition-colors duration-500">
       <GlobalStyles />
-      
+
       {/* PREVIEW MODAL */}
       {previewUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white w-full max-w-5xl h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden relative">
-            <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-slate-50">
-              <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                <Eye className="text-blue-600" /> Aperçu du CV
+          <div className="bg-white dark:bg-slate-900 w-full max-w-5xl h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden relative border dark:border-slate-800">
+            <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+              <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                <Eye className="text-blue-600 dark:text-blue-400" /> Aperçu du CV
               </h3>
               <div className="flex gap-2">
-                 <button onClick={handleDownload} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 font-bold">
-                    Télécharger
-                 </button>
-                 <button onClick={() => setPreviewUrl(null)} className="p-2 text-slate-400 hover:text-red-500 transition-colors">
-                    <X size={24} />
-                 </button>
+                <button onClick={handleDownload} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 font-bold btn-interactive">
+                  Télécharger
+                </button>
+                <button onClick={() => setPreviewUrl(null)} className="p-2 text-slate-400 hover:text-red-500 transition-colors btn-interactive">
+                  <X size={24} />
+                </button>
               </div>
             </div>
-            <iframe src={previewUrl} className="w-full h-full bg-gray-100" title="CV Preview"></iframe>
+            <iframe src={previewUrl} className="w-full h-full bg-gray-100 dark:bg-slate-800" title="CV Preview"></iframe>
           </div>
         </div>
       )}
@@ -335,22 +347,22 @@ export default function CVBuilderApp() {
       <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
 
         {/* HEADER */}
-        <div className="col-span-1 lg:col-span-12 flex justify-between items-end border-b border-gray-200 pb-4 mb-2">
+        <div className="col-span-1 lg:col-span-12 flex justify-between items-end border-b border-gray-200 dark:border-slate-800 pb-4 mb-2">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tighter cursor-pointer" onClick={() => navigate('/dashboard')}>reZume</h1>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tighter cursor-pointer" onClick={() => navigate('/dashboard')}>reZume</h1>
             <p className="text-xs tech-accent mt-1 tracking-widest font-bold">/// {t.builder.header} /// {t.builder.mode}</p>
           </div>
           <div className="flex gap-4 items-center">
-            <div className={`flex items-center space-x-2 bg-white px-3 py-1.5 rounded-full border border-gray-100 shadow-sm ${backendStatus === 'online' ? 'border-green-200' : 'border-red-200'}`}>
+            <div className={`flex items-center space-x-2 bg-white dark:bg-slate-900/50 px-3 py-1.5 rounded-full border border-gray-100 dark:border-slate-800 shadow-sm ${backendStatus === 'online' ? 'border-green-200 dark:border-green-900/30' : 'border-red-200 dark:border-red-900/30'}`}>
               <div className={`w-2 h-2 rounded-full animate-pulse ${backendStatus === 'online' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <span className={`text-xs font-bold tracking-wider ${backendStatus === 'online' ? 'text-green-600' : 'text-red-600'}`}>
+              <span className={`text-xs font-bold tracking-wider ${backendStatus === 'online' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                 {backendStatus === 'online' ? t.builder.backendOnline : t.builder.backendOffline}
               </span>
             </div>
-            <button onClick={() => navigate('/dashboard')} className="text-sm font-bold text-slate-500 hover:text-blue-600">
+            <button onClick={() => navigate('/dashboard')} className="text-sm font-bold text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 btn-interactive">
               Dashboard
             </button>
-            <button onClick={logout} className="text-slate-400 hover:text-red-600 transition" title={t.nav.logout}>
+            <button onClick={logout} className="text-slate-400 hover:text-red-600 transition btn-interactive" title={t.nav.logout}>
               <LogOut size={20} />
             </button>
           </div>
@@ -359,7 +371,7 @@ export default function CVBuilderApp() {
         {/* SIDEBAR (Dynamic) */}
         <div className="col-span-1 lg:col-span-3 glass-panel p-6 flex flex-col items-center text-center h-auto">
           <div className="relative mb-6">
-            <div className="w-24 h-24 rounded-full border-2 border-blue-200 p-1 bg-white flex items-center justify-center overflow-hidden">
+            <div className="w-24 h-24 rounded-full border-2 border-blue-200 dark:border-blue-900 p-1 bg-white dark:bg-slate-800 flex items-center justify-center overflow-hidden shadow-lg">
               {user && user.avatar_image && AVATARS.find(a => a.id === user.avatar_image) ? (
                 <img
                   src={AVATARS.find(a => a.id === user.avatar_image).src}
@@ -367,21 +379,21 @@ export default function CVBuilderApp() {
                   className="rounded-full w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full bg-blue-100 flex items-center justify-center text-3xl font-bold text-blue-600 rounded-full">
+                <div className="w-full h-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-3xl font-bold text-blue-600 dark:text-blue-400 rounded-full">
                   {user?.full_name?.charAt(0).toUpperCase() || 'U'}
                 </div>
               )}
             </div>
-            <div className="absolute bottom-1 right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow border border-blue-100">
+            <div className="absolute bottom-1 right-1 w-6 h-6 bg-white dark:bg-slate-700 rounded-full flex items-center justify-center shadow border border-blue-100 dark:border-blue-900">
               <Activity size={14} className="text-green-500" />
             </div>
           </div>
-          <h3 className="text-slate-900 font-bold text-lg">{user?.full_name || 'Utilisateur'}</h3>
+          <h3 className="text-slate-900 dark:text-white font-bold text-lg">{user?.full_name || 'Utilisateur'}</h3>
           <p className="text-xs tech-accent mb-8 font-bold tracking-wider">{user?.title || 'Étudiant'}</p>
           <div className="w-full text-left space-y-4 flex-1">
-            <div className="text-[10px] uppercase text-gray-400 tracking-widest font-bold border-b border-gray-100 pb-2">{t.builder.stats.database}</div>
+            <div className="text-[10px] uppercase text-gray-400 dark:text-slate-500 tracking-widest font-bold border-b border-gray-100 dark:border-slate-800 pb-2">{t.builder.stats.database}</div>
             <StatItem label={t.builder.stats.xpVectors} value={stats.xp} colorClass="tech-accent" />
-            <StatItem label={t.builder.stats.skills} value={stats.skills} colorClass="text-purple-600" />
+            <StatItem label={t.builder.stats.skills} value={stats.skills} colorClass="text-purple-600 dark:text-purple-400" />
           </div>
         </div>
 
@@ -389,17 +401,17 @@ export default function CVBuilderApp() {
         <div className="col-span-1 lg:col-span-6 flex flex-col gap-6 h-auto">
           <div className="glass-panel p-6 relative group">
             <div className="flex justify-between items-center mb-2">
-              <label className="text-xs text-slate-500 tracking-widest font-bold flex items-center gap-2">
+              <label className="text-xs text-slate-500 dark:text-slate-400 tracking-widest font-bold flex items-center gap-2">
                 <Terminal size={12} /> {t.builder.input.label}
               </label>
-              <button onClick={() => setInput(MOCK_JOB_OFFER)} className="text-[10px] text-blue-400 hover:text-blue-600 font-bold uppercase">
+              <button onClick={() => setInput(MOCK_JOB_OFFER)} className="text-[10px] text-blue-400 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 font-bold uppercase btn-interactive">
                 {t.builder.input.testData}
               </button>
             </div>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-lg p-4 text-sm focus:border-blue-500 outline-none h-32 font-mono text-slate-700 shadow-inner resize-none"
+              className="w-full bg-white dark:bg-slate-900/50 border border-gray-200 dark:border-slate-800 rounded-lg p-4 text-sm focus:border-blue-500 dark:focus:border-blue-400 outline-none h-32 font-mono text-slate-700 dark:text-slate-200 shadow-inner resize-none transition-colors"
               placeholder={t.builder.input.placeholder}
             ></textarea>
           </div>
@@ -407,7 +419,7 @@ export default function CVBuilderApp() {
           <button
             onClick={processJobOffer}
             disabled={isProcessing || !input}
-            className={`w-full py-4 shadow-md transition-all font-bold tracking-widest uppercase rounded-lg text-sm flex items-center justify-center gap-3 ${isProcessing || !input ? 'bg-gray-200 text-gray-400' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+            className={`w-full py-4 shadow-md transition-all font-bold tracking-widest uppercase rounded-lg text-sm flex items-center justify-center gap-3 btn-interactive btn-glow ${isProcessing || !input ? 'bg-gray-200 dark:bg-slate-800 text-gray-400 dark:text-slate-600' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
           >
             {isProcessing ? <RefreshCw className="animate-spin" size={18} /> : <Zap size={18} />}
             {isProcessing ? t.builder.actions.processing : t.builder.actions.process}
@@ -417,42 +429,42 @@ export default function CVBuilderApp() {
             {!results ? (
               <TerminalLog logs={logs} />
             ) : (
-              <div className="glass-panel p-6 flex-1 animate-fadeIn flex flex-col bg-white/60 overflow-hidden">
-                <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-2">
-                  <span className="text-xs font-bold text-green-600 flex items-center gap-2">
+              <div className="glass-panel p-6 flex-1 animate-fadeIn flex flex-col bg-white/60 dark:bg-slate-900/40 overflow-hidden">
+                <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-slate-800 pb-2">
+                  <span className="text-xs font-bold text-green-600 dark:text-green-400 flex items-center gap-2">
                     <CheckCircle size={14} /> {t.builder.results.optimizationComplete}
                   </span>
                   <div className="flex gap-2">
                     <button
-                        onClick={handlePreview}
-                        disabled={isPreviewing || isDownloading}
-                        className="text-xs bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1 rounded-full font-bold hover:bg-slate-200 transition-all flex items-center gap-2 disabled:opacity-50"
+                      onClick={handlePreview}
+                      disabled={isPreviewing || isDownloading}
+                      className="text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1 rounded-full font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 disabled:opacity-50 btn-interactive"
                     >
-                        {isPreviewing ? <RefreshCw size={14} className="animate-spin" /> : <Eye size={14} />}
-                        Aperçu
+                      {isPreviewing ? <RefreshCw size={14} className="animate-spin" /> : <Eye size={14} />}
+                      Aperçu
                     </button>
                     <button
-                        onClick={handleDownload}
-                        disabled={isDownloading}
-                        className="text-xs bg-white border border-gray-200 text-blue-600 px-3 py-1 rounded-full font-bold hover:bg-blue-50 transition-all flex items-center gap-2 disabled:opacity-50"
+                      onClick={handleDownload}
+                      disabled={isDownloading}
+                      className="text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full font-bold hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all flex items-center gap-2 disabled:opacity-50 btn-interactive"
                     >
-                        {isDownloading ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
-                        {isDownloading ? t.builder.actions.generating : t.builder.actions.download}
+                      {isDownloading ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
+                      {isDownloading ? t.builder.actions.generating : t.builder.actions.download}
                     </button>
                   </div>
                 </div>
                 <div className="flex-1 overflow-y-auto no-scrollbar space-y-4">
-                  <div className="p-3 bg-blue-50/50 border border-blue-100 rounded text-xs text-slate-600 leading-relaxed">
-                    <span className="font-bold text-blue-600 block mb-1">/// {t.builder.results.summary}</span>
+                  <div className="p-3 bg-blue-50/50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    <span className="font-bold text-blue-600 dark:text-blue-400 block mb-1">/// {t.builder.results.summary}</span>
                     {results.summary}
                   </div>
 
                   {results.skills && results.skills.length > 0 && (
-                    <div className="p-3 bg-purple-50/50 border border-purple-100 rounded">
-                      <span className="font-bold text-purple-600 block mb-2">/// {t.builder.results.skillsDetected}</span>
+                    <div className="p-3 bg-purple-50/50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-900/30 rounded">
+                      <span className="font-bold text-purple-600 dark:text-purple-400 block mb-2">/// {t.builder.results.skillsDetected}</span>
                       <div className="flex flex-wrap gap-2">
                         {results.skills.map((skill, idx) => (
-                          <span key={idx} className="bg-white text-purple-700 text-xs font-bold px-2.5 py-1 rounded-full border border-purple-200 shadow-sm">
+                          <span key={idx} className="bg-white dark:bg-slate-800 text-purple-700 dark:text-purple-300 text-xs font-bold px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-800 shadow-sm">
                             {skill}
                           </span>
                         ))}
@@ -462,8 +474,8 @@ export default function CVBuilderApp() {
 
                   <ul className="space-y-2">
                     {results.bulletPoints.map((point, idx) => (
-                      <li key={idx} className="flex items-start gap-3 text-sm text-slate-700 bg-white border border-gray-100 p-3 rounded shadow-sm hover:border-blue-200">
-                        <span className="text-blue-400 font-bold mt-0.5 text-xs">{`0${idx + 1}`}</span>
+                      <li key={idx} className="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded shadow-sm hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
+                        <span className="text-blue-400 dark:text-blue-500 font-bold mt-0.5 text-xs">{`0${idx + 1}`}</span>
                         <span className="font-medium text-xs md:text-sm">{point}</span>
                       </li>
                     ))}
@@ -477,11 +489,11 @@ export default function CVBuilderApp() {
         {/* RIGHT SIDEBAR */}
         <div className="col-span-1 lg:col-span-3 flex flex-col gap-6 h-auto">
           <div className="h-1/2"><ScoreWidget score={score} t={t} /></div>
-          <div className="glass-panel p-6 h-1/2 flex flex-col justify-center items-center text-center bg-slate-50/50 border-dashed relative">
+          <div className="glass-panel p-6 h-1/2 flex flex-col justify-center items-center text-center bg-slate-50/50 dark:bg-slate-900/20 border-dashed relative">
             {backendStatus === 'error' && <div className="text-red-500 mb-2"><AlertCircle /></div>}
-            <Code size={32} className="text-slate-300 mb-3" />
-            <h4 className="text-slate-500 font-bold text-sm">Python Backend</h4>
-            <p className="text-[10px] text-slate-400 mt-1 px-4">API Endpoint: <code className="bg-gray-100 px-1 rounded text-blue-500">POST /api/analyze</code></p>
+            <Code size={32} className="text-slate-300 dark:text-slate-700 mb-3" />
+            <h4 className="text-slate-500 dark:text-slate-400 font-bold text-sm">Python Backend</h4>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 px-4">API Endpoint: <code className="bg-gray-100 dark:bg-slate-800 px-1 rounded text-blue-500 dark:text-blue-400">POST /api/analyze</code></p>
           </div>
         </div>
 

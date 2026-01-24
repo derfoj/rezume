@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Check, X, ArrowRight, User, Mail, Lock, GraduationCap } from 'lucide-react';
+import { Check, X, ArrowRight, User, Mail, Lock, GraduationCap, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [fullName, setFullName] = useState('');
     const [title, setTitle] = useState('');
     const [error, setError] = useState('');
@@ -46,10 +47,10 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col relative overflow-hidden">
+        <div className="min-h-screen bg-slate-50 dark:bg-transparent transition-colors duration-500 flex flex-col relative overflow-hidden">
             {/* Navbar (Matches LandingPage) */}
             <nav className="p-6 flex justify-between items-center max-w-7xl mx-auto w-full relative z-20">
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tighter cursor-pointer" onClick={() => navigate('/')}>reZume</h1>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tighter cursor-pointer" onClick={() => navigate('/')}>reZume</h1>
             </nav>
 
             {/* Decorative Background Elements */}
@@ -60,11 +61,11 @@ export default function LoginPage() {
             </div>
 
             <main className="flex-1 flex flex-col justify-center items-center p-4 relative z-10">
-                <div className="w-full max-w-md bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/50 overflow-hidden transition-all hover:shadow-blue-500/10">
+                <div className="w-full max-w-md bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/50 dark:border-slate-700/50 overflow-hidden transition-all hover:shadow-blue-500/10 dark:hover:shadow-blue-900/10">
                     <div className="p-8">
                         <div className="text-center mb-8">
-                            <h1 className="text-3xl font-bold text-slate-900 tracking-tighter mb-2">reZume</h1>
-                            <p className="text-slate-500 text-sm">
+                            <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tighter mb-2">reZume</h1>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm">
                                 {isLogin ? 'Connectez-vous à votre espace' : 'Créez votre compte candidat'}
                             </p>
                         </div>
@@ -78,14 +79,14 @@ export default function LoginPage() {
                         <form onSubmit={handleSubmit} className="space-y-4">
                             {!isLogin && (
                                 <div className="space-y-1">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Nom complet</label>
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Nom complet</label>
                                     <div className="relative">
                                         <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                         <input
                                             type="text"
                                             value={fullName}
                                             onChange={(e) => setFullName(e.target.value)}
-                                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium text-slate-700"
+                                            className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium text-slate-700 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                             placeholder="John Doe"
                                             required={!isLogin}
                                         />
@@ -95,14 +96,14 @@ export default function LoginPage() {
 
                             {!isLogin && (
                                 <div className="space-y-1">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Études / Filière</label>
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Études / Filière</label>
                                     <div className="relative">
                                         <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                         <input
                                             type="text"
                                             value={title}
                                             onChange={(e) => setTitle(e.target.value)}
-                                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium text-slate-700"
+                                            className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium text-slate-700 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                             placeholder="Master Data Science"
                                         />
                                     </div>
@@ -110,14 +111,14 @@ export default function LoginPage() {
                             )}
 
                             <div className="space-y-1">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Email</label>
+                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Email</label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                     <input
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium text-slate-700"
+                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium text-slate-700 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                         placeholder="john@example.com"
                                         required
                                     />
@@ -125,17 +126,24 @@ export default function LoginPage() {
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Mot de passe</label>
+                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Mot de passe</label>
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                     <input
-                                        type="password"
+                                        type={showPassword ? "text" : "password"}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium text-slate-700"
+                                        className="w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium text-slate-700 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                         placeholder="••••••••"
                                         required
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
                                 </div>
                             </div>
 
@@ -148,8 +156,8 @@ export default function LoginPage() {
                         </form>
                     </div>
 
-                    <div className="bg-slate-50 p-4 text-center border-t border-slate-100">
-                        <p className="text-slate-500 text-sm">
+                    <div className="bg-slate-50 dark:bg-slate-900/50 p-4 text-center border-t border-slate-100 dark:border-slate-800">
+                        <p className="text-slate-500 dark:text-slate-400 text-sm">
                             {isLogin ? "Pas encore de compte ?" : "Déjà un compte ?"}
                             <button
                                 onClick={() => setIsLogin(!isLogin)}

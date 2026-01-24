@@ -15,30 +15,39 @@ class OptimizerAgent:
         # Using the standard get_llm which handles provider selection from env/settings
         return get_llm()
 
-    def optimize_description(self, text: str) -> str:
+    def optimize_description(self, text: str, tone: str = "standard") -> str:
         """
-        Rewrites a job description using the STAR method (Situation, Task, Action, Result).
+        Rewrites a job description using the STAR method with a specific tone.
+        Tones: standard, dynamic, formal, explanatory
         """
         if not text or len(text) < 10:
             return text
 
-        prompt = f"""
-        Tu es un expert en rédaction de CV et en coaching de carrière.
-        Ta mission est de réécrire la description d'expérience professionnelle ci-dessous pour la rendre plus percutante.
-
-        Méthode à utiliser : STAR (Situation, Tâche, Action, Résultat).
+        tone_instructions = {
+            "standard": "Adopte un ton professionnel équilibré. Utilise la méthode STAR.",
+            "dynamic": "Adopte un ton énergique et punchy. Utilise des verbes d'action forts. Idéal pour startups/tech.",
+            "formal": "Adopte un ton soutenu et académique. Vocabulaire précis et corporatif. Idéal pour banque/droit.",
+            "explanatory": "Adopte un ton pédagogique et clair. Explique bien les concepts. Idéal pour junior/reconversion."
+        }
         
-        Consignes :
-        1. Utilise des verbes d'action forts à l'infinitif ou au passé composé (ex: "Développer", "Avoir géré").
-        2. Sois concis et direct (style bullet points).
-        3. Mets en avant les résultats quantifiables si le texte original le permet (chiffres, %, temps gagné).
-        4. Ne pas inventer de faits, mais sublimer ceux existants.
-        5. Le résultat doit être prêt à être copié-collé dans un CV (pas de texte d'intro "Voici la version corrigée...").
+        instruction = tone_instructions.get(tone, tone_instructions["standard"])
+
+        prompt = f"""
+        Tu es un expert en rédaction de CV.
+        Ta mission est de réécrire la description d'expérience professionnelle ci-dessous.
+
+        Consigne de ton : {instruction}
+        
+        Règles globales :
+        1. Utilise des listes à puces (bullet points) si possible.
+        2. Mets en avant les résultats.
+        3. Corrige les fautes.
+        4. Le résultat doit être prêt à l'emploi.
 
         Description originale :
         "{text}"
 
-        Description optimisée (format bullet points si plusieurs idées, ou paragraphe dense) :
+        Description optimisée :
         """
 
         try:

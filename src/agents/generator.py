@@ -10,6 +10,42 @@ from src.core.utils import load_yaml, load_text
 from src.core.llm_provider import get_llm
 from src.config.constants import TEMPLATES_DIR
 
+def escape_latex_special_chars(text: str) -> str:
+    """
+    Escapes LaTeX special characters in a string to prevent injection or compilation errors.
+    """
+    if not isinstance(text, str):
+        return text
+    
+    chars = {
+        "&": r"\&",
+        "%": r"\%",
+        "$": r"\$",
+        "#": r"\#",
+        "_": r"\_",
+        "{": r"\{",
+        "}": r"\}",
+        "~": r"\textasciitilde{}",
+        "^": r"\textasciicircum{}",
+        "\\": r"\textbackslash{}",
+    }
+    
+    # Simple replacement loop
+    for char, escaped in chars.items():
+        text = text.replace(char, escaped)
+    return text
+
+def sanitize_data_recursive(data):
+    """Recursively sanitizes dictionary or list values."""
+    if isinstance(data, dict):
+        return {k: sanitize_data_recursive(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [sanitize_data_recursive(i) for i in data]
+    elif isinstance(data, str):
+        return escape_latex_special_chars(data)
+    else:
+        return data
+
 class GeneratorAgent:
     """
     An agent responsible for generating the final LaTeX CV by calling an LLM
@@ -27,13 +63,12 @@ class GeneratorAgent:
         """Strips markdown code blocks and leading/trailing whitespace."""
         code = latex_code.strip()
         if code.startswith("```latex"):
-            code = code[len("```latex"):
-].strip()
+            code = code[len("```latex"):].strip()
         if code.endswith("```"):
             code = code[:-len("```")].strip()
         
         # Ensure it starts with \documentclass
-        if not code.startswith(r"\documentclass"):
+        if not code.startswith(r"\\documentclass"):
             return latex_code # Return original if cleaning is likely wrong
         
         return code
@@ -50,6 +85,11 @@ class GeneratorAgent:
 
         print(f"🔹 Préparation du contexte pour la génération par LLM (Template: {template_name})...")
         
+        # --- SECURITY FIX: Sanitize Input Data ---
+        safe_profile = sanitize_data_recursive(user_profile)
+        safe_experiences = sanitize_data_recursive(experiences)
+        # -----------------------------------------
+
         template_path = TEMPLATES_DIR / f"{template_name}.tex"
         if not template_path.exists():
             print(f"⚠️ Template '{template_name}' introuvable. Fallback sur 'classic'.")
@@ -61,9 +101,9 @@ class GeneratorAgent:
         
         # Use .replace() for safety with LaTeX syntax
         final_prompt = prompt_template.replace(
-            "{{user_profile}}", json.dumps(user_profile, indent=2, ensure_ascii=False)
+            "{{user_profile}}", json.dumps(safe_profile, indent=2, ensure_ascii=False)
         ).replace(
-            "{{selected_experiences}}", json.dumps(experiences, indent=2, ensure_ascii=False)
+            "{{selected_experiences}}", json.dumps(safe_experiences, indent=2, ensure_ascii=False)
         ).replace(
             "{{cv_template}}", cv_template_content
         )
@@ -91,18 +131,16 @@ class GeneratorAgent:
 
         cmd = ["pdflatex", "-interaction=nonstopmode", f"-output-directory={str(output_dir)}", str(tex_path)]
         try:
-            # We run compilation twice. We don't check for exit code because pdflatex
-            # can return non-zero for warnings even if a PDF is generated.
+            # We run compilation twice.
             subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
             subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
         except FileNotFoundError:
             raise RuntimeError("pdflatex introuvable. Assurez-vous qu'une distribution LaTeX est installée.")
         
-        # Instead of checking the exit code, we check if the PDF was actually created.
         if not pdf_path.exists():
             log_file = tex_path.with_suffix(".log")
             log_content = log_file.read_text(encoding='utf-8', errors='ignore') if log_file.exists() else "Fichier log non trouvé."
-            print(f"❌ Erreur de compilation LaTeX. Le PDF n'a pas été créé. Log:\n{log_content[-1500:]}")
+            print(f"❌ Erreur de compilation LaTeX. Log:\n{log_content[-1500:]}")
             raise RuntimeError("La compilation LaTeX a échoué (aucun PDF produit).")
         
         return str(pdf_path), str(tex_path)

@@ -20,7 +20,8 @@ _model_instance = None
 def get_model():
     global _model_instance
     if _model_instance is None:
-        _model_instance = SentenceTransformer(MODEL_NAME)
+        # Force CPU usage to avoid potential 'meta' tensor issues on some configs
+        _model_instance = SentenceTransformer(MODEL_NAME, device="cpu")
     return _model_instance
 
 def build_vector_store(documents: List[Dict[str, Any]], index_name: str = "kb_index"):

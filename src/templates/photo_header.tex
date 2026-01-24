@@ -1,6 +1,6 @@
 % -------------------------
-% Resume in Latex - Corrected for Jinja2 Parsing
-% Author : Matty | Adapted for Paul M.
+% Resume in Latex - Photo Header Design
+% Adapted for reZume with Custom Jinja2 Delimiters
 % -------------------------
 
 \documentclass[letterpaper,11pt]{article}
@@ -19,15 +19,10 @@
 \usepackage{xcolor}
 \usepackage{fontawesome5}
 \usepackage{graphicx}
-\usepackage[margin=0.5in]{geometry} % Optimized for Single Page
+\usepackage{wrapfig}
+\usepackage[margin=0.5in]{geometry}
 
 \input{glyphtounicode}
-
-\pagestyle{fancy}
-\fancyhf{}
-\fancyfoot{}
-\renewcommand{\headrulewidth}{0pt}
-\renewcommand{\footrulewidth}{0pt}
 
 \urlstyle{same}
 \raggedbottom
@@ -36,12 +31,8 @@
 
 % Section Formatting - Compact but readable
 \titleformat{\section}{
-  \vspace{-4pt}\scshape\raggedright\large
+  \vspace{-2pt}\scshape\raggedright\large\bfseries
 }{}{0em}{}[\color{black}\titlerule \vspace{0pt}]
-
-\titleformat{\subsection}{
-  \vspace{-3pt}\scshape\raggedright\large
-}{\hspace{-.15in}}{0em}{}[\color{black}\vspace{-4pt}]
 
 \pdfgentounicode=1
 
@@ -67,7 +58,6 @@
     \end{tabular*}\vspace{-4pt}
 }
 
-% Optimized List Spacing
 \newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}, itemsep=1pt, parsep=0pt]}
 \newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
 \newcommand{\resumeItemListStart}{\begin{itemize}[itemsep=1pt, parsep=0pt]}
@@ -76,34 +66,49 @@
 % -------------------- DOCUMENT START --------------------
 \begin{document}
 
-% --- HEADER ---
-\begin{center}
-    \textbf{\Huge \scshape (( user.name )) } \\ \vspace{8pt}
-    \textbf{\Large \scshape (( user.title )) } \\ \vspace{5pt}
-    
-    \small
-    \faIcon{github} \href{(( user.portfolio_url ))}{\underline{Portfolio}} \quad
-    \faIcon{linkedin} \href{(( user.linkedin_url ))}{\underline{LinkedIn}} \quad
-    \faIcon{envelope} \href{mailto:(( user.email ))}{\underline{(( user.email ))}}
-\end{center}
+% --- HEADER WITH PHOTO ---
+\noindent
+\begin{minipage}[c]{0.20\textwidth}
+    % Placeholder for photo validation
+    (% if user.photo_path %)
+    \includegraphics[width=0.9\textwidth, height=3.5cm, keepaspectratio]{(( user.photo_path ))}
+    (% else %)
+    \begin{center} \large \faUserCircle \end{center}
+    (% endif %)
+\end{minipage}%
+\begin{minipage}[c]{0.78\textwidth}
+    \begin{center}
+        \textbf{\Huge \scshape (( user.name )) } \\ \vspace{8pt}
+        \textbf{\large (( user.title )) } \\
+        \small DISPONIBLE IMMÉDIATEMENT \\ \vspace{8pt}
+        
+        \small
+        (% if user.portfolio_url %)
+        \faIcon{github} \href{(( user.portfolio_url ))}{\underline{Mon Portfolio}} \quad
+        (% endif %)
+        
+        (% if user.linkedin_url %)
+        \faIcon{linkedin} \href{(( user.linkedin_url ))}{\underline{LinkedIn}} \quad
+        (% endif %)
+        
+        \faIcon{envelope} \href{mailto:(( user.email ))}{\underline{(( user.email ))}}
+    \end{center}
+\end{minipage}
 
-% --- SUMMARY ---
-\section{\textbf{PROFIL}}
-\small (( user.summary ))
-\vspace{5pt}
+\vspace{10pt}
 
 % --- EDUCATION ---
-\section{\textbf{FORMATION}}
+\section{EDUCATION}
 \resumeSubHeadingListStart
     (% for edu in user.education %)
     \resumeSubheading
       {(( edu.institution ))}{(( edu.period ))}
-      {(( edu.degree )) \ifx (( edu.mention )) \empty \else - (( edu.mention )) \fi}{}
+      {(( edu.degree ))}{(( edu.mention )) \ifx (( edu.mention )) \empty \else \fi}
     (% endfor %)
 \resumeSubHeadingListEnd
 
 % --- EXPERIENCE ---
-\section{\textbf{EXPÉRIENCES \& PROJETS}}
+\section{EXPERIENCES PROFESSIONNELLES \& PROJETS}
 \resumeSubHeadingListStart
 
 (% for exp in experiences %)
@@ -117,20 +122,20 @@
 
 \resumeSubHeadingListEnd
 
-% --- SKILLS ---
-\section{\textbf{COMPÉTENCES TECHNIQUES}}
+% --- COMPÉTENCES TECHNIQUES ---
+\section{COMPETENCES TECHNIQUES}
 \begin{itemize}[leftmargin=0.15in, label={}]
     \small{\item{
      \textbf{Outils \& Langages}{: (( user.skills | join(', ') )) }
     }}
 \end{itemize}
 
-% --- SOFT SKILLS ---
-\section{\textbf{SAVOIR-ÊTRE}}
+% --- COMPÉTENCES PERSONNELLES ---
+\section{COMPETENCES PERSONNELLES}
 \begin{center}
     \begin{tabularx}{\textwidth}{X X}
     (% for skill in user.soft_skills %)
-       $\bullet$ (( skill ))
+       \textbf{(( skill ))}
        (% if loop.index is divisibleby 2 %) \\
        (% elif not loop.last %)&
        (% endif %)
@@ -139,7 +144,7 @@
 \end{center}
 
 % --- LANGUES ---
-\section{\textbf{LANGUES}}
+\section{LANGUES}
 \begin{itemize}[leftmargin=0.15in, label={}]
     \small{\item{
     (% for lang in user.languages %)

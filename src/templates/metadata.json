@@ -12,5 +12,12 @@
         "description": "Un design épuré sans-serif avec des accents bleus. Parfait pour les développeurs, designers et startups.",
         "file": "modern.tex",
         "preview": "modern_preview.svg"
+    },
+    {
+        "id": "photo_header",
+        "name": "Photo & Header",
+        "description": "Un design avec photo en entête, idéal pour marquer les esprits.",
+        "file": "photo_header.tex",
+        "preview": "photo_preview.svg"
     }
 ]

@@ -18,27 +18,58 @@ from src.agents.llama_extractor import LlamaExtractorAgent
 import os
 import shutil
 import tempfile
+import filetype # NEW
+from pathlib import Path
 
 router = APIRouter()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+MAX_FILE_SIZE = 5 * 1024 * 1024 # 5 MB
+
+from fastapi import Request
+import logging
+
+logger = logging.getLogger(__name__)
+
+def get_current_user(request: Request, db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=401,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    
+    # DEBUG LOGGING
+    logger.info(f"DEBUG: Cookies received: {request.cookies}")
+    logger.info(f"DEBUG: Auth Header: {request.headers.get('Authorization')}")
+    
+    token = request.cookies.get("access_token")
+    if not token:
+        # Fallback to Authorization header for flexibility
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+        else:
+            logger.warning("DEBUG: No token found in cookies or header.")
+            raise credentials_exception
+
+    # Remove "Bearer " prefix if present in cookie (auth.py adds it)
+    if token.startswith("Bearer "):
+        token = token.split(" ")[1]
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
+            logger.warning("DEBUG: Token payload missing email.")
             raise credentials_exception
-    except JWTError:
+    except JWTError as e:
+        logger.warning(f"DEBUG: JWT Decode Error: {e}")
         raise credentials_exception
     
     user = db.query(User).filter(User.email == email).first()
     if user is None:
+        logger.warning(f"DEBUG: User not found in DB for email {email}")
         raise credentials_exception
     return user
 
@@ -142,26 +173,39 @@ async def upload_cv(
     Uploads a PDF CV, parses it using AI, and returns the structured data 
     for user review (without saving to DB).
     """
-    if not file.filename.endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+    # 1. Basic Extension Check
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported (extension check).")
 
     temp_path = None
     try:
-        # 1. Save uploaded file to temp
+        # 2. Save uploaded file to temp (streaming to avoid memory overflow)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            shutil.copyfileobj(file.file, tmp)
+            size = 0
+            while chunk := await file.read(1024 * 1024): # Read in 1MB chunks
+                size += len(chunk)
+                if size > MAX_FILE_SIZE:
+                    tmp.close()
+                    os.remove(tmp.name)
+                    raise HTTPException(status_code=413, detail=f"File too large. Max size is {MAX_FILE_SIZE/1024/1024}MB.")
+                tmp.write(chunk)
             temp_path = tmp.name
 
-        # 2. Extract text
+        # 3. Magic Number Check (Content-Type Verification)
+        kind = filetype.guess(temp_path)
+        if kind is None or kind.mime != "application/pdf":
+            raise HTTPException(status_code=400, detail="Invalid file type. Please upload a valid PDF.")
+
+        # 4. Extract text
         text = extract_text_from_pdf(temp_path)
         if not text:
             raise ValueError("Could not extract text from the provided PDF.")
 
-        # 3. Parse with AI using LlamaExtractorAgent
+        # 5. Parse with AI using LlamaExtractorAgent
         extractor = LlamaExtractorAgent()
         data = extractor.extract_data(text)
 
-        # 4. Return data to frontend for review
+        # 6. Return data to frontend for review
         return {
             "message": "CV parsed successfully",
             "data": data
@@ -173,6 +217,43 @@ async def upload_cv(
     finally:
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
+
+# --- Profile Photo Upload ---
+@router.post("/profile/upload-photo")
+async def upload_photo(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Uploads a profile picture for the user.
+    """
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image.")
+
+    # Create uploads directory if not exists
+    upload_dir = Path("data/img/uploads")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    # Filename: user_{id}_{filename} to avoid collisions but keep extension
+    filename = f"user_{current_user.id}_{file.filename}"
+    file_path = upload_dir / filename
+
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Update user profile
+        # We store the relative path or a special marker to indicate it's an upload
+        # Let's store: "uploads/filename"
+        relative_path = f"uploads/{filename}"
+        current_user.avatar_image = relative_path
+        db.commit()
+        
+        return {"message": "Photo uploaded successfully", "path": relative_path}
+    except Exception as e:
+        print(f"Error uploading photo: {e}")
+        raise HTTPException(status_code=500, detail="Failed to upload photo.")
 
 # --- Endpoints ---
 
@@ -426,3 +507,19 @@ def update_language(
     db.refresh(db_lang)
     background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
     return db_lang
+
+@router.delete("/profile/languages/{lang_id}")
+def delete_language(
+    lang_id: int, 
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    db_lang = db.query(Language).filter(Language.id == lang_id, Language.user_id == current_user.id).first()
+    if not db_lang:
+        raise HTTPException(status_code=404, detail="Language not found")
+    
+    db.delete(db_lang)
+    db.commit()
+    background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+    return {"message": "Language deleted"}

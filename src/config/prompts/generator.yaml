@@ -21,9 +21,11 @@ template: |
      - Ne change pas les marges, les polices ou les commandes définies (`\resumeItem`, `\resumeSubheading`, etc.).
      - Remplis uniquement les zones de contenu.
 
-  3. **CONTRAINTE D'UNE PAGE** :
-     - Le CV doit tenir sur **UNE SEULE PAGE**. C'est une règle d'or.
-     - Si le contenu est trop long, tu dois **synthétiser** intelligemment : garde les impacts forts, supprime les détails superflus, condense les phrases.
+  3. **CONTRAINTE DE LONGUEUR STRICTE (1 PAGE MAX)** :
+     - Le CV doit IMPÉRATIVEMENT tenir sur **UNE SEULE PAGE**. C'est une règle absolue.
+     - Tu DOIS synthétiser, résumer et sélectionner l'information la plus pertinente pour respecter cette contrainte.
+     - Réduis le nombre de bullet points si nécessaire (max 3-4 par expérience majeure, 2 pour les anciennes).
+     - Si le contenu déborde, coupe les phrases verbeuses. NE DÉPASSE JAMAIS UNE PAGE.
 
   --------------------------------------------------------
   RÈGLES DE RÉDACTION RH & IMPACT (À SUIVRE STRICTEMENT)
@@ -52,6 +54,11 @@ template: |
      - **Étape 3 :** Génère le code LaTeX pour cette section en utilisant le format suivant pour chaque catégorie :
        `\textbf{Nom de la Catégorie}{: Compétence 1, Compétence 2...} \\ \vspace{1.5pt}`
      - Assure-toi que la section `\section{\textbf{COMPETENCES TECHNIQUES}}` est suivie d'un `\begin{itemize}` et que ton contenu généré s'insère dedans, se terminant par `\end{itemize}`.
+
+  8. **PRÉSERVATION DES MOTS-CLÉS (INTOUCHABLES)** :
+     - Si une expérience source contient des termes techniques, acronymes ou noms d'outils (ex: Docker, Kubernetes, React, AWS, CI/CD), tu as l'INTERDICTION de les supprimer ou de les reformuler.
+     - Tu DOIS les intégrer tels quels dans les bullet points.
+     - Si une phrase source contient exactement un mot-clé majeur de l'offre (implicite via le contexte), privilégie de garder cette phrase quasi-intacte plutôt que de trop la résumer.
 
   --------------------------------------------------------
   DONNÉES D'ENTRÉE :

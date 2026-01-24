@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class OptimizationRequest(BaseModel):
     text: str
+    tone: str = "standard"
 
 @router.post("/analyze", response_model=AnalysisResponse)
 async def analyze_endpoint(
@@ -48,11 +49,11 @@ def optimize_description_endpoint(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Optimizes a job description using the STAR method.
+    Optimizes a job description using the STAR method with a specific tone.
     """
     try:
         agent = OptimizerAgent()
-        optimized_text = agent.optimize_description(request.text)
+        optimized_text = agent.optimize_description(request.text, tone=request.tone)
         return {"optimized_text": optimized_text}
     except Exception as e:
         logger.error(f"Optimization error: {e}")

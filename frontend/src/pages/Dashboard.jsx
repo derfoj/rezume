@@ -4,7 +4,8 @@ import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import { Camera, X, Check, ArrowRight, UserPen, Sparkles, LogOut, Settings, Globe, Moon, Sun, Key, Link, Radio, Layout } from 'lucide-react';
 import { translations } from '../config/translations';
-import StarryBackground from '../components/StarryBackground';
+import DashboardSkeleton from '../components/DashboardSkeleton';
+import { motion } from 'framer-motion';
 
 // Import Avatars
 import avatarManLaptop from '../assets/avatar_man_laptop.png';
@@ -39,7 +40,9 @@ export default function Dashboard() {
         llm_provider: 'openai',
         llm_model: 'gpt-4o-mini',
         selected_template: 'classic'
+
     });
+    const [loading, setLoading] = useState(true);
     const [showAvatarSelector, setShowAvatarSelector] = useState(false);
     const [showSettingsModal, setShowSettingsModal] = useState(false);
     const { addToast } = useToast();
@@ -49,15 +52,18 @@ export default function Dashboard() {
         const fetchUser = async () => {
             try {
                 const res = await fetch(`${API_URL}/api/profile/me`, {
-                    headers: { Authorization: `Bearer ${token}` }
+                    credentials: 'include'
                 });
                 if (res.ok) setUser(await res.json());
             } catch (error) {
                 console.error("Error fetching user", error);
+            } finally {
+                // Determine synthetic loading time for smoother skeletal transition
+                setTimeout(() => setLoading(false), 800);
             }
         };
         fetchUser();
-    }, [token, API_URL]);
+    }, [API_URL]); // Removed token dependency
 
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [newTitle, setNewTitle] = useState('');
@@ -68,9 +74,9 @@ export default function Dashboard() {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ avatar_image: avatarId })
+                body: JSON.stringify({ avatar_image: avatarId }),
+                credentials: 'include'
             });
             if (res.ok) {
                 const updatedUser = await res.json();
@@ -89,8 +95,9 @@ export default function Dashboard() {
         try {
             const res = await fetch(`${API_URL}/api/profile/me`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify(updates)
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates),
+                credentials: 'include'
             });
             if (res.ok) {
                 const updatedUser = await res.json();
@@ -111,8 +118,9 @@ export default function Dashboard() {
         try {
             const res = await fetch(`${API_URL}/api/profile/me`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ title: newTitle })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: newTitle }),
+                credentials: 'include'
             });
             if (res.ok) {
                 const updatedUser = await res.json();
@@ -134,9 +142,12 @@ export default function Dashboard() {
     // Get current language dictionary (fallback to 'fr' if undefined)
     const t = translations[user.language] || translations.fr;
 
+    if (loading) {
+        return <DashboardSkeleton />;
+    }
+
     return (
-        <div className={`min-h-screen transition-colors duration-500 ${isDark ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-900'}`}>
-            {isDark && <StarryBackground />}
+        <div className={`min-h-screen transition-colors duration-500 ${isDark ? 'bg-transparent text-white' : 'bg-slate-50 text-slate-900'}`}>
 
             {/* Content Wrapper to ensure z-index above stars */}
             <div className="relative z-10">
@@ -147,13 +158,13 @@ export default function Dashboard() {
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => setShowSettingsModal(true)}
-                            className={`p-2 rounded-full transition-all ${isDark ? 'text-slate-300 hover:bg-slate-800 hover:text-white' : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'}`}
+                            className={`p-2 rounded-full transition-all btn-interactive ${isDark ? 'text-slate-300 hover:bg-slate-800 hover:text-white' : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'}`}
                         >
                             <Settings size={20} />
                         </button>
                         <button
                             onClick={logout}
-                            className={`flex items-center gap-2 font-medium transition-colors ${isDark ? 'text-slate-300 hover:text-red-400' : 'text-slate-600 hover:text-red-600'}`}
+                            className={`flex items-center gap-2 font-medium transition-colors btn-interactive ${isDark ? 'text-slate-300 hover:text-red-400' : 'text-slate-600 hover:text-red-600'}`}
                         >
                             <LogOut size={18} /> <span className="hidden md:inline">{t.nav.logout}</span>
                         </button>
@@ -167,7 +178,10 @@ export default function Dashboard() {
                     <div className="mb-20 flex flex-col items-center gap-8 text-center">
 
                         {/* Avatar Circle */}
-                        <div
+                        <motion.div
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ type: "spring", stiffness: 260, damping: 20 }}
                             onClick={() => setShowAvatarSelector(true)}
                             className="group relative w-32 h-32 md:w-40 md:h-40 bg-white rounded-full p-2 shadow-xl border border-gray-100 cursor-pointer hover:scale-105 transition-transform duration-300"
                         >
@@ -183,9 +197,13 @@ export default function Dashboard() {
                             <div className="absolute bottom-2 right-2 bg-blue-600 text-white p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Camera size={16} />
                             </div>
-                        </div>
+                        </motion.div>
 
-                        <div>
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2, duration: 0.5 }}
+                        >
                             <div className="mb-4 inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50/10 text-blue-600 font-bold text-xs tracking-wider uppercase rounded-full border border-blue-200 backdrop-blur-sm">
                                 {isEditingTitle ? (
                                     <div className="flex items-center gap-2">
@@ -217,14 +235,16 @@ export default function Dashboard() {
                             <p className={`text-lg max-w-2xl mx-auto leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                 {t.hero.subtitle}
                             </p>
-                        </div>
+                        </motion.div>
                     </div>
 
                     {/* Cards Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-7xl">
 
                         {/* Profile Editor Card */}
-                        <div
+                        <motion.div
+                            whileHover={{ scale: 1.05, y: -5 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => navigate('/editor')}
                             className={`group p-8 rounded-2xl shadow-sm border transition-all duration-300 cursor-pointer flex flex-col relative overflow-hidden ${isDark ? 'bg-slate-800/50 border-slate-700 hover:bg-slate-800 hover:border-blue-500/50 hover:shadow-blue-900/20' : 'bg-white border-gray-100 hover:shadow-xl hover:border-blue-200'}`}
                         >
@@ -238,10 +258,12 @@ export default function Dashboard() {
                             <div className="mt-auto flex items-center text-blue-500 font-bold text-sm tracking-wide">
                                 {t.cards.editor.action} <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
                             </div>
-                        </div>
+                        </motion.div>
 
                         {/* CV Builder Card */}
-                        <div
+                        <motion.div
+                            whileHover={{ scale: 1.05, y: -5 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => navigate('/builder')}
                             className={`group p-8 rounded-2xl shadow-sm border transition-all duration-300 cursor-pointer flex flex-col relative overflow-hidden ${isDark ? 'bg-slate-800/50 border-slate-700 hover:bg-slate-800 hover:border-purple-500/50 hover:shadow-purple-900/20' : 'bg-white border-gray-100 hover:shadow-xl hover:border-purple-200'}`}
                         >
@@ -255,10 +277,12 @@ export default function Dashboard() {
                             <div className="mt-auto flex items-center text-purple-500 font-bold text-sm tracking-wide">
                                 {t.cards.builder.action} <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
                             </div>
-                        </div>
+                        </motion.div>
 
                         {/* Explore Templates Card */}
-                        <div
+                        <motion.div
+                            whileHover={{ scale: 1.05, y: -5 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => navigate('/explore')}
                             className={`group p-8 rounded-2xl shadow-sm border transition-all duration-300 cursor-pointer flex flex-col relative overflow-hidden ${isDark ? 'bg-slate-800/50 border-slate-700 hover:bg-slate-800 hover:border-teal-500/50 hover:shadow-teal-900/20' : 'bg-white border-gray-100 hover:shadow-xl hover:border-teal-200'}`}
                         >
@@ -272,7 +296,7 @@ export default function Dashboard() {
                             <div className="mt-auto flex items-center text-teal-500 font-bold text-sm tracking-wide">
                                 {t.cards.explore.action} <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
                             </div>
-                        </div>
+                        </motion.div>
                     </div>
 
                 </main>
