@@ -1,6 +1,6 @@
 # reZume : Votre Assistant de Carrière IA
 
-![reZume](data/img/reZume_logo.png) 
+![reZume](https://drive.google.com/file/d/1rk-FCr9r-58SM8oCCsIK7Z-wjwEQqhvL/view?usp=sharing) 
 
 **reZume** est une application full-stack intelligente conçue pour automatiser et optimiser la création de CVs personnalisés. Fini le temps perdu à adapter manuellement votre CV pour chaque offre d'emploi. reZume analyse l'offre, la compare à votre profil complet, et génère un CV percutant en LaTeX, prêt à être envoyé.
 
