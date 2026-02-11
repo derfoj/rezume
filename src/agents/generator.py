@@ -132,7 +132,7 @@ class GeneratorAgent:
 
 
 
-    def generate_cv_from_llm(self, user_profile: Dict[str, Any], experiences: List[Dict[str, Any]], template_name: str = "classic", feedback: str = None, session_dir: Path = None) -> (str, str):
+    def generate_cv_from_llm(self, user_profile: Dict[str, Any], experiences: List[Dict[str, Any]], template_name: str = "modern", feedback: str = None, session_dir: Path = None) -> (str, str):
         """
         Generates a PDF CV using the LLM-as-a-template-engine approach.
         
@@ -194,8 +194,8 @@ class GeneratorAgent:
 
         template_path = TEMPLATES_DIR / f"{template_name}.tex"
         if not template_path.exists():
-            print(f"⚠️ Template '{template_name}' introuvable. Fallback sur 'classic'.")
-            template_path = TEMPLATES_DIR / "classic.tex"
+            print(f"⚠️ Template '{template_name}' introuvable. Fallback sur 'modern'.")
+            template_path = TEMPLATES_DIR / "modern.tex"
 
         cv_template_content = load_text(template_path)
         
@@ -204,12 +204,16 @@ class GeneratorAgent:
         # Determine verbosity based on experience count
         num_experiences = len(experiences)
         if num_experiences <= 3:
-            verbosity_instruction = "HAUTE VERBOSITÉ REQUISE : Le candidat a peu d'expériences sélectionnées (3 ou moins). Tu DOIS impérativement étoffer chaque bullet point. Détaille le contexte, la méthodologie, les défis techniques et les résultats. Chaque expérience doit occuper un espace visuel conséquent pour éviter que le CV ne paraisse vide. Ne sois PAS concis."
-        elif num_experiences >= 5:
-            verbosity_instruction = "VERBOSITÉ STRICTE (MAX 1 PAGE) : Le candidat a beaucoup d'expériences (5 ou plus). Tu DOIS être EXTRÊMEMENT concis. Limite-toi à 2-3 bullet points MAX par expérience. Va droit au but : Action -> Résultat. Supprime tout détail superflu. L'objectif absolu est de faire tenir tout le CV sur une seule page sans réduire la police."
+        verbosity_instruction = "HAUTE VERBOSITÉ REQUISE : Le candidat a 3 expériences sélectionnées (3 ou moins). étoffe chaque bullet point. Détaille un peu le contexte, la méthodologie, les défis techniques et les résultats. Chaque expérience doit occuper un espace visuel raisonnable conséquent pour éviter que le CV ne paraisse vide. Ne sois PAS concis."
+        elif num_experiences >= 4:
+            verbosity_instruction = "OPTIMISATION INTELLIGENTE (OBJECTIF 1 PAGE) : Le candidat a plusieurs expériences. Tu DOIS faire tenir le CV sur UNE SEULE page. Pour cela, applique cette stratégie de condensation : sois DÉTAILLÉ pour les 2 expériences les plus récentes (3-4 bullet points percutants), mais sois TRÈS CONCIS pour les expériences plus anciennes (1-2 bullet points synthétiques). Cherche l'équilibre parfait entre densité d'information et gain de place."
         else:
             verbosity_instruction = "VERBOSITÉ STANDARD : Sois concis, direct et percutant. Privilégie la densité d'information à la longueur."
         
+        # --- Template Specific Rules ---
+        if template_name == "modern":
+            verbosity_instruction += "\n\nRÈGLE SPÉCIALE MODERN : Pour la section 'Compétences' (Expertise Technique), tu DOIS sélectionner UNIQUEMENT les 12 compétences les plus pertinentes et percutantes. Ne liste PAS tout. La liste doit être lisible et aérée."
+
         # Use .replace() for safety with LaTeX syntax
         final_prompt = prompt_template.replace(
             "{{user_profile}}", json.dumps(safe_profile, indent=2, ensure_ascii=False)

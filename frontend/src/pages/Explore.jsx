@@ -96,7 +96,7 @@ export default function Explore() {
                                         ) : null}
 
                                         {/* Fallback Gradient (visible if no image or image fails) */}
-                                        <div className={`absolute inset-0 flex items-center justify-center text-4xl font-bold text-white uppercase tracking-widest -z-10 ${tpl.id === 'modern' ? 'bg-gradient-to-br from-blue-500 to-cyan-400' : 'bg-gradient-to-br from-slate-600 to-slate-800'}`}>
+                                        <div className={`absolute inset-0 flex items-center justify-center text-4xl font-bold text-white uppercase tracking-widest -z-10 ${tpl.id === 'modern' ? 'bg-gradient-to-br from-blue-500 to-cyan-400' : 'bg-gradient-to-br from-indigo-500 to-purple-600'}`}>
                                             {tpl.name.split(' ')[0]}
                                         </div>
                                     </div>

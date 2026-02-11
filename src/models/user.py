@@ -15,7 +15,7 @@ class User(Base):
     portfolio_url = Column(String, nullable=True)
     language = Column(String, default="fr") # 'fr' or 'en'
     theme = Column(String, default="light") # 'light' or 'dark'
-    selected_template = Column(String, default="classic") # 'classic' or 'modern'
+    selected_template = Column(String, default="modern") # 'modern' or 'photo_header'
     linkedin_url = Column(String, nullable=True)
     openai_api_key = Column(String, nullable=True)
     search_status = Column(String, default="listening") # listening, active, closed

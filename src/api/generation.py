@@ -98,7 +98,7 @@ async def generate_cv_endpoint(
         pdf_path, tex_path = generator.generate_cv_from_llm(
             user_profile=user_profile_dict,
             experiences=request.experiences,
-            template_name=current_user.selected_template or "classic"
+            template_name=current_user.selected_template or "modern"
         )
         
         # Auto-correction Loop

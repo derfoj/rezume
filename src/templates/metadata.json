@@ -1,12 +1,5 @@
 [
     {
-        "id": "classic",
-        "name": "Classique & Sobre",
-        "description": "Un format académique éprouvé, idéal pour les profils traditionnels, la finance et le droit. Police avec empattement.",
-        "file": "classic.tex",
-        "preview": "classic_preview.svg"
-    },
-    {
         "id": "modern",
         "name": "Moderne & Tech",
         "description": "Un design épuré sans-serif avec des accents bleus. Parfait pour les développeurs, designers et startups.",

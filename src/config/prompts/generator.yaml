@@ -22,6 +22,10 @@ template: |
 
   6. Échappe les caractères spéciaux LaTeX (%, &, $, #, _) en ajoutant un antislash devant (\%, \&, ...).
   7. Le CV doit tenir sur 1 page. {{verbosity_instruction}}
+  8. **FORMATAGE DES COMPÉTENCES (CRITIQUE)** :
+     - Pour `{{hard_skills}}` et `{{soft_skills}}` : Génère une liste compacte en ligne, séparée par des virgules ou des symboles (ex: "Python, Java, C++" ou "Python $\bullet$ Java").
+     - **INTERDICTION** d'utiliser `\item` ou des sauts de ligne pour chaque compétence. Cela prend trop de place.
+     - Exception : Si le template contient déjà des `\item` autour de la variable (vérifie le contexte), ne les double pas, fournis juste le texte.
 
   DONNÉES :
   Profil: {{user_profile}}
