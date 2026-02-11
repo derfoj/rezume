@@ -128,33 +128,9 @@ class GeneratorAgent:
             
         return latex_code.strip()
 
-    def _sanitize_experiences_for_llm(self, experiences: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """
-        Cleans experience data to remove placeholders and handle missing fields
-        before sending to the LLM.
-        """
-        cleaned = []
-        for exp in experiences:
-            # Create a copy to avoid modifying the original list
-            item = exp.copy()
-            
-            # 1. Clean Company Name
-            company = item.get("company", "").strip()
-            # Check for common placeholders or empty strings
-            if not company or any(p in company for p in ["[", "Nom de l'entreprise", "Company Name"]):
-                item["company"] = "Projet Personnel / Indépendant"
-            
-            # 2. Clean Dates
-            start_date = item.get("start_date", "").strip()
-            end_date = item.get("end_date", "").strip()
-            
-            if any(p in start_date for p in ["[", "Date"]):
-                item["start_date"] = ""
-            if any(p in end_date for p in ["[", "Date"]):
-                item["end_date"] = ""
-                
-            cleaned.append(item)
-        return cleaned
+
+
+
 
     def generate_cv_from_llm(self, user_profile: Dict[str, Any], experiences: List[Dict[str, Any]], template_name: str = "classic", feedback: str = None, session_dir: Path = None) -> (str, str):
         """
@@ -213,10 +189,7 @@ class GeneratorAgent:
                 user_profile["photo_path"] = ""
 
         safe_profile = sanitize_data_recursive(user_profile, skip_keys={"photo_path"})
-        
-        # CLEAN AND SANITIZE EXPERIENCES
-        cleaned_experiences = self._sanitize_experiences_for_llm(experiences)
-        safe_experiences = sanitize_data_recursive(cleaned_experiences)
+        safe_experiences = sanitize_data_recursive(experiences)
         # -----------------------------------------
 
         template_path = TEMPLATES_DIR / f"{template_name}.tex"

@@ -1,45 +1,33 @@
 name: "generator_agent"
-description: "Génération du CV final LaTeX avec adaptation intelligente du contenu."
+description: "Génération du CV final LaTeX."
 template: |
-  Tu es un **Expert en Recrutement Tech et Spécialiste LaTeX**.
-  Ta mission est double :
-  1. **FOND (Créativité)** : Réécrire et adapter les descriptions des expériences pour qu'elles matchent parfaitement les mots-clés et l'esprit de l'offre visée (si implicite) ou pour maximiser l'impact (Méthode STAR : Situation, Task, Action, Result).
-  2. **FORME (Rigueur)** : Respecter scrupuleusement le format LaTeX demandé sans JAMAIS casser la structure.
+  Tu es un assistant spécialisé en LaTeX.
+  Ta tâche est de remplir le template LaTeX ci-dessous avec les données JSON du profil utilisateur.
 
-  --------------------------------------------------------
-  RÈGLES D'INTÉGRITÉ & STRUCTURE (NON NÉGOCIABLES)
-  --------------------------------------------------------
+  INSTRUCTIONS :
+  1. Utilise les données fournies pour remplir les sections du template (Formation, Expériences, Compétences).
+  2. Pour les expériences (`selected_experiences`), utilise la structure suivante pour chaque item :
+     \resumeSubheading{Nom de l'entreprise}{Dates}{Titre du poste}{Lieu}
+     \resumeItemListStart
+       \resumeItem{Description point 1}
+       \resumeItem{Description point 2}
+     \resumeItemListEnd
+  3. **IMPORTANT :** Ne modifie pas le sens du texte. Contente-toi de le formater en LaTeX.
+  4. Si une donnée manque (ex: nom d'entreprise), laisse le champ vide `{}`. N'écris PAS de placeholders comme "[Nom]".
+  5. **SÉCURITÉ CRITIQUE (ACCOLADES)** :
+     - Vérifie scrupuleusement que CHAQUE accolade ouvrante `{` a une accolade fermante `}` correspondante.
+     - Exemple CORRECT : `\resumeItem{J'ai fait ceci.}`
+     - Exemple INCORRECT (PLANTAGE) : `\resumeItem{J'ai fait ceci.` (Accolade manquante !)
+     - Ne laisse jamais une commande ouverte.
 
-  1. **VÉRACITÉ IDENTITAIRE** :
-     - Utilise le **NOM EXACT** de l'entreprise tel qu'il apparaît dans le JSON `selected_experiences`.
-     - **INTERDICTION ABSOLUE** d'anonymiser ou d'utiliser des placeholders comme `[Nom de l'entreprise]` ou `[Date]`.
-     - Si une info manque dans le JSON, laisse le champ vide dans le LaTeX `{}`, ne mets rien d'autre.
+  6. Échappe les caractères spéciaux LaTeX (%, &, $, #, _) en ajoutant un antislash devant (\%, \&, ...).
+  7. Le CV doit tenir sur 1 page. {{verbosity_instruction}}
 
-  2. **STRUCTURE LATEX IMPOSÉE** :
-     - Pour CHAQUE expérience, tu DOIS utiliser ce bloc précis :
-       `\resumeSubheading{Nom Entreprise}{Dates}{Titre Poste}{Lieu}`
-       `\resumeItemListStart`
-       `\resumeItem{Ta description réécrite et percutante ici...}`
-       `\resumeItemListEnd`
-     - **JAMAIS** de listes numérotées (01, 02) ou de titres hors des balises LaTeX.
-     - **JAMAIS** de commentaires ou de paragraphes de conclusion du type "Cette expérience démontre...".
+  DONNÉES :
+  Profil: {{user_profile}}
+  Expériences: {{selected_experiences}}
 
-  3. **LONGUEUR & CONTENU** :
-     - Le CV doit tenir sur **1 PAGE MAX**.
-     - {{verbosity_instruction}}
-
-  --------------------------------------------------------
-  DONNÉES D'ENTRÉE :
-  
-  PROFIL CANDIDAT :
-  {{user_profile}}
-
-  EXPÉRIENCES SÉLECTIONNÉES (À adapter et sublimer) :
-  {{selected_experiences}}
-
-  TEMPLATE LATEX DE BASE :
+  TEMPLATE :
   {{cv_template}}
 
-  --------------------------------------------------------
-  GÉNÈRE MAINTENANT LE CODE LATEX FINAL :
-  (Commence directement par le code, pas de blabla).
+  Génère uniquement le code LaTeX complet.

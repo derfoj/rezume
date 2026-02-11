@@ -119,6 +119,51 @@ def _diversify_results(
             
     return diverse_results
 
+def _rank_skills_by_relevance(user_skills: list, offer_text: str, top_n: int = 15) -> list:
+    """
+    Ranks the user's skills based on their semantic relevance to the job offer text.
+    """
+    if not user_skills or not offer_text:
+        return user_skills[:top_n]
+
+    try:
+        from src.core.vector_store import get_model
+        import numpy as np
+        
+        model = get_model()
+        
+        # Encode offer text (query)
+        # Using "query: " prefix for E5 model
+        offer_embedding = model.encode([f"query: {offer_text}"])
+        offer_embedding = np.array(offer_embedding, dtype=np.float32)
+        norm_offer = np.linalg.norm(offer_embedding)
+        
+        # Encode skills (passages)
+        # Using "passage: " prefix for E5 model
+        skill_texts = [f"passage: {skill}" for skill in user_skills]
+        skill_embeddings = model.encode(skill_texts)
+        skill_embeddings = np.array(skill_embeddings, dtype=np.float32)
+        
+        # Calculate cosine similarity
+        scores = []
+        for i, skill_emb in enumerate(skill_embeddings):
+            norm_skill = np.linalg.norm(skill_emb)
+            if norm_offer == 0 or norm_skill == 0:
+                score = 0
+            else:
+                score = np.dot(offer_embedding[0], skill_emb) / (norm_offer * norm_skill)
+            scores.append((user_skills[i], score))
+            
+        # Sort by score descending
+        ranked_skills = sorted(scores, key=lambda x: x[1], reverse=True)
+        
+        # Return top N skill names
+        return [s[0] for s in ranked_skills[:top_n]]
+        
+    except Exception as e:
+        logger.warning(f"Skill ranking failed: {e}. Returning original order.")
+        return user_skills[:top_n]
+
 # --- ANALYSIS PIPELINE ---
 def run_analysis_pipeline(raw_text: str, db: Session = None, user_id: int = 1) -> dict:
     """
@@ -144,6 +189,10 @@ def run_analysis_pipeline(raw_text: str, db: Session = None, user_id: int = 1) -
 
         skills_from_offer = parsed.get("skills", [])
         missions = parsed.get("missions", [])
+        
+        # --- NEW: Smart Skill Selection ---
+        # Instead of just showing what the offer asks for, we show the user's best matching skills
+        optimized_skills = _rank_skills_by_relevance(profile.skills, raw_text, top_n=12)
         
         query_str = f"Skills: {', '.join(skills_from_offer)}. Missions: {' '.join(missions)}"
         
@@ -252,7 +301,7 @@ def run_analysis_pipeline(raw_text: str, db: Session = None, user_id: int = 1) -
         return {
             "score": final_score,
             "summary": summary_text,
-            "skills": skills_from_offer[:10],
+            "skills": optimized_skills, # Returning user's relevant skills instead of offer's required skills
             "bulletPoints": bullet_points,
             "raw_matches": matches
         }

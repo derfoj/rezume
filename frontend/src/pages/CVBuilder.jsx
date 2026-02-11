@@ -288,7 +288,10 @@ export default function CVBuilderApp() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ experiences: editableExperiences }),
+        body: JSON.stringify({ 
+            experiences: editableExperiences, 
+            job_offer_text: input 
+        }),
       });
 
       if (!response.ok) throw new Error("Preview Generation Failed");
@@ -338,7 +341,10 @@ export default function CVBuilderApp() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ experiences: editableExperiences }),
+        body: JSON.stringify({ 
+            experiences: editableExperiences, 
+            job_offer_text: input 
+        }),
       });
 
       if (!response.ok) throw new Error("PDF Generation Failed");

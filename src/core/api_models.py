@@ -17,3 +17,4 @@ class AnalysisResponse(BaseModel):
 class CVGenerationRequest(BaseModel):
     """Request model for the CV generation endpoint."""
     experiences: List[Dict[str, Any]]
+    job_offer_text: str = None

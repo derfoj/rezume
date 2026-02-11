@@ -14,6 +14,7 @@ from src.core.knowledge_base import get_profile_from_db, Profile
 from src.api.profile import get_current_user
 from src.models.user import User
 from src.config.constants import TEMPLATES_DIR
+from src.core.orchestration import _rank_skills_by_relevance # NEW IMPORT
 import json
 
 router = APIRouter()
@@ -78,6 +79,13 @@ async def generate_cv_endpoint(
         # 1. Load and validate the user profile
         user_profile = get_profile_from_db(db, user_id=current_user.id)
         
+        # --- NEW: Smart Skill Filtering for PDF ---
+        # If job offer text is provided, filter skills to keep only the most relevant ones (top 15)
+        if request.job_offer_text:
+            logger.info("Applying smart skill filtering for CV generation based on job offer.")
+            relevant_skills = _rank_skills_by_relevance(user_profile.skills, request.job_offer_text, top_n=15)
+            user_profile.skills = relevant_skills
+        
         # 2. Instantiate the agent
         generator = GeneratorAgent(
             provider=current_user.llm_provider,
@@ -108,7 +116,7 @@ async def generate_cv_endpoint(
             warnings = validation_result.get("warnings", [])
             feedback_intro = "URGENT : LE CV GÉNÉRÉ EST INVALIDE."
             feedback_details = "\n".join(warnings)
-            feedback_action = "Tu DOIS corriger ces erreurs MAINTENANT. Si le problème est la longueur (plus d'une page), SOIS RADICAL : supprime les expériences les plus anciennes, réduis les descriptions à 1-2 puces maximum, ou supprime le résumé. Il vaut mieux un CV incomplet qui tient sur 1 page qu'un CV trop long."
+            feedback_action = "Tu DOIS corriger ces erreurs. Si le problème est la longueur (plus d'une page), OPTIMISE intelligemment : condense les descriptions des expériences les plus anciennes (1-2 puces), mais garde du détail pour les plus récentes. Ne supprime pas tout brutalement, cherche l'équilibre pour tenir sur 1 page."
             
             feedback = f"{feedback_intro}\nProblèmes détectés :\n{feedback_details}\n\nINSTRUCTION DE CORRECTION :\n{feedback_action}"
             
