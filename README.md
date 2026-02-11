@@ -13,7 +13,9 @@
 - **Optimisation STAR** : Un agent IA dédié reformule vos descriptions d'expérience selon la méthode STAR (Situation, Tâche, Action, Résultat) pour un impact maximal.
 - **Recherche Sémantique (RAG)** : Utilise un moteur de recherche vectorielle (FAISS) pour sélectionner les expériences les plus pertinentes de votre profil pour une offre donnée.
 - **Génération de CV PDF** : Compile un CV professionnel en LaTeX/PDF, optimisé pour les ATS (Applicant Tracking Systems).
+- **Validation & Auto-Correction** : Un système de boucle fermée vérifie la conformité du CV (limite stricte d'une page, erreurs de compilation LaTeX) et demande automatiquement une correction à l'IA en cas de problème.
 - **Prévisualisation Live** : Visualisez votre CV généré directement dans le navigateur avant de le télécharger.
+- **Expérience Immersive** : Suivez le processus de génération en temps réel via une simulation de terminal (Analyse, Rédaction, Compilation, Vérification).
 - **Galerie de Templates** : Choisissez parmi plusieurs designs (Classique, Moderne) via une interface visuelle.
 
 ---
@@ -29,7 +31,8 @@
     - **Sentence-Transformers** (Embeddings)
   - **Base de Données** : SQLite (via SQLAlchemy)
   - **Recherche Vectorielle** : FAISS
-  - **Génération PDF** : LaTeX (MiKTeX/TeX Live requis)
+  - **Génération & Validation** : LaTeX (MiKTeX/TeX Live), Validateur de conformité personnalisé (page count, LaTeX sanitization)
+  - **Gestion de Fichiers** : Organisation structurée des sorties par UUID (outputs/generated_cvs/)
 
 - **Frontend** :
   - **Framework** : React (Vite)
@@ -115,9 +118,9 @@ reZume/
 3.  **Flux de Travail :**
     - **Créer un compte** : Inscrivez-vous sur la plateforme.
     - **Profil** : Importez votre CV (PDF). L'IA extraira vos données. Vérifiez et optimisez vos descriptions avec le bouton "Améliorer IA".
-    - **Explorer** : Choisissez un template dans la galerie.
-    - **CV Builder** : Collez une offre d'emploi. L'IA analyse le match, sélectionne vos meilleures expériences, et génère un aperçu PDF.
-    - **Télécharger** : Récupérez votre CV optimisé.
+    - **Explorer** : Choisissez un template dans la galerie (Classique, Moderne, etc.).
+    - **CV Builder** : Collez une offre d'emploi. L'IA analyse le match, sélectionne vos meilleures expériences, génère le code LaTeX, **vérifie la conformité (1 page)**, et compile le PDF.
+    - **Télécharger** : Récupérez votre CV optimisé et validé.
 
 ---
 
