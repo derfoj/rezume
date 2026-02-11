@@ -13,15 +13,22 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Use a consistent model for generating embeddings
-MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
+MODEL_NAME = "intfloat/multilingual-e5-small"
 # Load model globally to avoid reloading on every call (caching strategy)
 _model_instance = None
 
 def get_model():
     global _model_instance
     if _model_instance is None:
-        # Force CPU usage to avoid potential 'meta' tensor issues on some configs
-        _model_instance = SentenceTransformer(MODEL_NAME, device="cpu")
+        logger.info("Initializing SentenceTransformer model with low_cpu_mem_usage=False...")
+        # Force CPU usage by hiding CUDA devices
+        os.environ["CUDA_VISIBLE_DEVICES"] = ""
+        # Explicitly setting device='cpu' and disabling device_map to avoid 'meta tensor' errors
+        _model_instance = SentenceTransformer(
+            MODEL_NAME, 
+            device="cpu",
+            model_kwargs={"low_cpu_mem_usage": False, "device_map": None}
+        )
     return _model_instance
 
 def build_vector_store(documents: List[Dict[str, Any]], index_name: str = "kb_index"):
@@ -42,8 +49,8 @@ def build_vector_store(documents: List[Dict[str, Any]], index_name: str = "kb_in
     index_path = os.path.join(EMBEDDINGS_DIR, f"{index_name}.faiss")
     data_path = os.path.join(EMBEDDINGS_DIR, f"{index_name}.json")
 
-    # Extract text content
-    texts = [doc.get('content', '') for doc in documents]
+    # Extract text content and prepend "passage: " for E5 models
+    texts = [f"passage: {doc.get('content', '')}" for doc in documents]
     
     # Generate embeddings
     model = get_model()
@@ -85,6 +92,10 @@ def recalculate_user_embeddings(user_id: int, db: Session):
             documents.append({
                 "type": "experience",
                 "content": content,
+                "title": exp.title,
+                "company": exp.company,
+                "period": exp.period,
+                "description": exp.description,
                 "metadata": {
                     "title": exp.title,
                     "company": exp.company,
@@ -160,9 +171,9 @@ def search_vector_store(
     with open(data_path, 'r', encoding='utf-8') as f:
         documents = json.load(f)
 
-    # Encode Query
+    # Encode Query with "query: " prefix for E5 models
     model = get_model()
-    query_embedding = model.encode([query_text])
+    query_embedding = model.encode([f"query: {query_text}"])
     query_embedding = np.array(query_embedding, dtype=np.float32)
     faiss.normalize_L2(query_embedding)
 
@@ -178,8 +189,13 @@ def search_vector_store(
     results = []
     for i, idx in enumerate(indices[0]):
         if idx != -1:
-            doc = documents[idx]
+            doc = documents[idx].copy() # Copy to avoid mutating original
             doc['match_score'] = float(distances[0][i])
+            # Reconstruct embedding from index for diversification logic
+            try:
+                doc['embedding'] = index.reconstruct(int(idx)).tolist()
+            except Exception as e:
+                logger.warning(f"Could not reconstruct embedding for index {idx}: {e}")
             results.append(doc)
             
     return results

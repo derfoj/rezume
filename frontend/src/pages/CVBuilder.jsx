@@ -14,7 +14,9 @@ import {
   RefreshCw,
   Code,
   Eye,
-  X
+  X,
+  Pencil,
+  Check
 } from 'lucide-react';
 
 // Import Avatars
@@ -144,6 +146,8 @@ const ScoreWidget = ({ score, t }) => {
   );
 };
 
+import FormattedText from '../components/FormattedText';
+
 const StatItem = ({ label, value, colorClass }) => (
   <div className="flex justify-between items-center bg-white/80 dark:bg-slate-900/80 border border-gray-100 dark:border-slate-800 p-3 rounded-lg shadow-sm w-full">
     <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{label}</span>
@@ -152,7 +156,7 @@ const StatItem = ({ label, value, colorClass }) => (
 );
 
 export default function CVBuilderApp() {
-  const { token, logout, user, theme } = useAuth(); // Get user and theme from context
+  const { token, logout, user, theme, profileData } = useAuth(); // Get user and theme from context
   const { addToast } = useToast();
   const navigate = useNavigate();
   const isDark = theme === 'dark';
@@ -172,9 +176,11 @@ export default function CVBuilderApp() {
   const [score, setScore] = useState(0);
   const [logs, setLogs] = useState(INITIAL_LOGS);
   const [results, setResults] = useState(null);
+  const [editableExperiences, setEditableExperiences] = useState([]);
+  const [editingIndex, setEditingIndex] = useState(null);
   const [backendStatus, setBackendStatus] = useState('offline');
 
-  // Stats remain local for now as they are specific to this view's dashboard needs
+  // Stats from context
   const [stats, setStats] = useState({ xp: 0, skills: 0 });
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -189,25 +195,40 @@ export default function CVBuilderApp() {
     };
     checkBackend();
 
-    const fetchStats = async () => {
-      try {
-        const headers = { Authorization: `Bearer ${token}` };
-        // User is already in context, just fetch specific stats
-        const xpRes = await fetch(`${API_URL}/api/profile/experiences`, { headers });
-        const skillRes = await fetch(`${API_URL}/api/profile/skills`, { headers });
+    if (profileData) {
+        setStats({
+            xp: profileData.experiences?.length || 0,
+            skills: profileData.skills?.length || 0
+        });
+    }
+  }, [API_URL, profileData]);
 
-        if (xpRes.ok && skillRes.ok) {
-          const xps = await xpRes.json();
-          const skills = await skillRes.json();
-          setStats({ xp: xps.length, skills: skills.length });
-        }
-      } catch (error) {
-        console.error("Error fetching stats", error);
-      }
-    };
+  const progressTimers = useRef([]);
 
-    if (token) fetchStats();
-  }, [token, API_URL]);
+  const clearProgressTimers = () => {
+    progressTimers.current.forEach(timer => clearTimeout(timer));
+    progressTimers.current = [];
+  };
+
+  const startProgressSimulation = () => {
+    clearProgressTimers();
+    const messages = [
+      { delay: 1000, text: "Consulting AI Generator Agent...", type: 'process' },
+      { delay: 3000, text: "Drafting LaTeX content...", type: 'process' },
+      { delay: 6000, text: "Compiling PDF document...", type: 'process' },
+      { delay: 9000, text: "Verifying single-page compliance...", type: 'wait' },
+      { delay: 12000, text: "Checking for hallucinations...", type: 'wait' },
+      { delay: 15000, text: "Applying auto-corrections...", type: 'process' },
+      { delay: 20000, text: "Finalizing document structure...", type: 'process' },
+    ];
+
+    messages.forEach(({ delay, text, type }) => {
+      const timer = setTimeout(() => {
+        addLog(text, type);
+      }, delay);
+      progressTimers.current.push(timer);
+    });
+  };
 
   const addLog = (text, type = 'process') => {
     setLogs(prev => [...prev, { id: Date.now(), text, type }]);
@@ -217,6 +238,8 @@ export default function CVBuilderApp() {
     if (!input.trim()) return;
     setIsProcessing(true);
     setResults(null);
+    setEditableExperiences([]);
+    setEditingIndex(null);
     setScore(0);
     setLogs([]);
 
@@ -241,6 +264,7 @@ export default function CVBuilderApp() {
       addToast(t.toasts.analysis_success, 'success');
       setScore(data.score);
       setResults(data);
+      setEditableExperiences(data.raw_matches || []);
 
     } catch (error) {
       addLog(`ERREUR: ${error.message}`, 'error');
@@ -251,9 +275,11 @@ export default function CVBuilderApp() {
   };
 
   const handlePreview = async () => {
-    if (!results || !results.raw_matches) return;
+    if (!editableExperiences || editableExperiences.length === 0) return;
     setIsPreviewing(true);
-    addLog("Generating preview...", 'process');
+    setLogs([]); // Clear previous logs to show fresh progress
+    addLog("Initiating Preview Generation...", 'info');
+    startProgressSimulation();
 
     try {
       const response = await fetch(`${API_URL}/api/generate-cv`, {
@@ -262,10 +288,26 @@ export default function CVBuilderApp() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ experiences: results.raw_matches }),
+        body: JSON.stringify({ experiences: editableExperiences }),
       });
 
       if (!response.ok) throw new Error("Preview Generation Failed");
+
+      // Check for validation report in headers
+      const validationHeader = response.headers.get('X-CV-Validation-Report');
+      if (validationHeader) {
+        try {
+          const report = JSON.parse(decodeURIComponent(validationHeader));
+          if (!report.valid) {
+            report.warnings.forEach(w => addToast(w, 'warning', 10000)); // Long duration for warnings
+            addLog("Validation Warnings Detected!", 'error');
+          } else {
+            addLog("Compliance Check Passed.", 'success');
+          }
+        } catch (e) {
+          console.error("Failed to parse validation header", e);
+        }
+      }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -276,15 +318,18 @@ export default function CVBuilderApp() {
       addLog(`${error.message}`, 'error');
       addToast("Erreur lors de la prévisualisation", 'error');
     } finally {
+      clearProgressTimers();
       setIsPreviewing(false);
     }
   };
 
   const handleDownload = async () => {
-    if (!results || !results.raw_matches) return;
+    if (!editableExperiences || editableExperiences.length === 0) return;
     setIsDownloading(true);
-    addLog("Requesting PDF generation...", 'process');
+    setLogs([]); // Clear previous logs
+    addLog("Requesting PDF generation...", 'info');
     addToast("Génération du PDF en cours...", 'info');
+    startProgressSimulation();
 
     try {
       const response = await fetch(`${API_URL}/api/generate-cv`, {
@@ -293,12 +338,14 @@ export default function CVBuilderApp() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ experiences: results.raw_matches }),
+        body: JSON.stringify({ experiences: editableExperiences }),
       });
 
       if (!response.ok) throw new Error("PDF Generation Failed");
 
       const blob = await response.blob();
+      if (blob.size === 0) throw new Error("Generated PDF is empty");
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -306,7 +353,10 @@ export default function CVBuilderApp() {
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.URL.revokeObjectURL(url);
+      
+      // Slight delay to ensure download starts before revoking
+      setTimeout(() => window.URL.revokeObjectURL(url), 100);
+      
       addLog("PDF Download initiated.", 'success');
       addToast(t.toasts.pdf_success, 'success');
 
@@ -314,8 +364,16 @@ export default function CVBuilderApp() {
       addLog(`${error.message}`, 'error');
       addToast(t.toasts.pdf_error, 'error');
     } finally {
-      setIsDownloading(false);
+      clearProgressTimers();
+      // Delay switching back view so user sees the success message
+      setTimeout(() => setIsDownloading(false), 2000);
     }
+  };
+
+  const handleExperienceChange = (index, field, value) => {
+    const updated = [...editableExperiences];
+    updated[index] = { ...updated[index], [field]: value };
+    setEditableExperiences(updated);
   };
 
   return (
@@ -344,7 +402,7 @@ export default function CVBuilderApp() {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+      <div className="w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
 
         {/* HEADER */}
         <div className="col-span-1 lg:col-span-12 flex justify-between items-end border-b border-gray-200 dark:border-slate-800 pb-4 mb-2">
@@ -372,7 +430,13 @@ export default function CVBuilderApp() {
         <div className="col-span-1 lg:col-span-3 glass-panel p-6 flex flex-col items-center text-center h-auto">
           <div className="relative mb-6">
             <div className="w-24 h-24 rounded-full border-2 border-blue-200 dark:border-blue-900 p-1 bg-white dark:bg-slate-800 flex items-center justify-center overflow-hidden shadow-lg">
-              {user && user.avatar_image && AVATARS.find(a => a.id === user.avatar_image) ? (
+              {user && user.avatar_image && user.avatar_image.startsWith('uploads/') ? (
+                 <img
+                  src={`${API_URL}/data/img/${user.avatar_image}`}
+                  alt="Avatar"
+                  className="rounded-full w-full h-full object-cover"
+                />
+              ) : user && user.avatar_image && AVATARS.find(a => a.id === user.avatar_image) ? (
                 <img
                   src={AVATARS.find(a => a.id === user.avatar_image).src}
                   alt="Avatar"
@@ -388,7 +452,12 @@ export default function CVBuilderApp() {
               <Activity size={14} className="text-green-500" />
             </div>
           </div>
-          <h3 className="text-slate-900 dark:text-white font-bold text-lg">{user?.full_name || 'Utilisateur'}</h3>
+          <h3 
+            onClick={() => navigate('/profile')}
+            className={`font-bold text-lg cursor-pointer hover:text-blue-500 transition-colors ${!user?.full_name ? 'text-slate-400 italic' : 'text-slate-900 dark:text-white'}`}
+          >
+            {user?.full_name || 'Compléter mon profil'}
+          </h3>
           <p className="text-xs tech-accent mb-8 font-bold tracking-wider">{user?.title || 'Étudiant'}</p>
           <div className="w-full text-left space-y-4 flex-1">
             <div className="text-[10px] uppercase text-gray-400 dark:text-slate-500 tracking-widest font-bold border-b border-gray-100 dark:border-slate-800 pb-2">{t.builder.stats.database}</div>
@@ -426,7 +495,7 @@ export default function CVBuilderApp() {
           </button>
 
           <div className="flex-1 flex flex-col min-h-0">
-            {!results ? (
+            {(!results || isPreviewing || isDownloading) ? (
               <TerminalLog logs={logs} />
             ) : (
               <div className="glass-panel p-6 flex-1 animate-fadeIn flex flex-col bg-white/60 dark:bg-slate-900/40 overflow-hidden">
@@ -472,14 +541,47 @@ export default function CVBuilderApp() {
                     </div>
                   )}
 
-                  <ul className="space-y-2">
-                    {results.bulletPoints.map((point, idx) => (
-                      <li key={idx} className="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded shadow-sm hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
-                        <span className="text-blue-400 dark:text-blue-500 font-bold mt-0.5 text-xs">{`0${idx + 1}`}</span>
-                        <span className="font-medium text-xs md:text-sm">{point}</span>
-                      </li>
+                  <div className="space-y-4">
+                    <span className="font-bold text-blue-600 dark:text-blue-400 block text-xs">/// {t.builder.results.experiencesMatched || "EXPÉRIENCES SÉLECTIONNÉES"}</span>
+                    {editableExperiences.map((exp, idx) => (
+                      <div key={idx} className="bg-white dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded shadow-sm hover:border-blue-200 dark:hover:border-blue-800 transition-colors space-y-2 group/exp">
+                        <div className="flex items-center gap-2">
+                          <span className="text-blue-400 dark:text-blue-500 font-bold text-xs">{`0${idx + 1}`}</span>
+                          {editingIndex === idx ? (
+                            <input
+                              type="text"
+                              value={exp.title}
+                              onChange={(e) => handleExperienceChange(idx, 'title', e.target.value)}
+                              className="flex-1 bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 rounded px-2 py-1 outline-none font-bold text-sm text-slate-800 dark:text-white"
+                              autoFocus
+                            />
+                          ) : (
+                            <span className="flex-1 font-bold text-sm text-slate-800 dark:text-white">{exp.title}</span>
+                          )}
+                          
+                          <button 
+                            onClick={() => setEditingIndex(editingIndex === idx ? null : idx)}
+                            className={`p-1.5 rounded-full transition-all ml-2 border ${editingIndex === idx ? 'bg-green-100 text-green-600 border-green-200' : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-300'}`}
+                            title={editingIndex === idx ? "Valider" : "Modifier"}
+                          >
+                            {editingIndex === idx ? <Check size={14} /> : <Pencil size={14} />}
+                          </button>
+                        </div>
+
+                        {editingIndex === idx ? (
+                          <textarea
+                            value={exp.description}
+                            onChange={(e) => handleExperienceChange(idx, 'description', e.target.value)}
+                            className="w-full bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 rounded p-2 text-xs text-slate-600 dark:text-slate-300 min-h-[120px] resize-y outline-none focus:ring-1 ring-blue-400 font-mono"
+                          />
+                        ) : (
+                          <div className="pl-1">
+                            <FormattedText text={exp.description} />
+                          </div>
+                        )}
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               </div>
             )}

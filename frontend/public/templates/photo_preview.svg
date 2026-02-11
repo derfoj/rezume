@@ -1,0 +1,62 @@
+<svg width="210mm" height="297mm" viewBox="0 0 210 297" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="white"/>
+  
+  <!-- Header -->
+  <circle cx="105" cy="30" r="12" fill="#e2e8f0"/>
+  <rect x="75" y="48" width="60" height="6" rx="1" fill="#1e293b"/>
+  <rect x="85" y="58" width="40" height="4" rx="1" fill="#64748b"/>
+  
+  <!-- Contact Info -->
+  <rect x="60" y="68" width="90" height="2" rx="0.5" fill="#94a3b8"/>
+
+  <!-- Section: Profil -->
+  <rect x="20" y="85" width="40" height="4" fill="#334155"/>
+  <rect x="20" y="90" width="170" height="0.5" fill="#cbd5e1"/>
+  <rect x="20" y="95" width="170" height="2" fill="#e2e8f0"/>
+  <rect x="20" y="100" width="160" height="2" fill="#e2e8f0"/>
+
+  <!-- Section: Experience -->
+  <rect x="20" y="115" width="60" height="4" fill="#334155"/>
+  <rect x="20" y="120" width="170" height="0.5" fill="#cbd5e1"/>
+  
+  <!-- Exp 1 -->
+  <rect x="20" y="128" width="100" height="3" fill="#475569"/>
+  <rect x="170" y="128" width="20" height="3" fill="#94a3b8"/>
+  <rect x="20" y="134" width="150" height="2" fill="#e2e8f0"/>
+  <rect x="20" y="138" width="140" height="2" fill="#e2e8f0"/>
+
+  <!-- Exp 2 -->
+  <rect x="20" y="150" width="90" height="3" fill="#475569"/>
+  <rect x="170" y="150" width="20" height="3" fill="#94a3b8"/>
+  <rect x="20" y="156" width="150" height="2" fill="#e2e8f0"/>
+  <rect x="20" y="160" width="130" height="2" fill="#e2e8f0"/>
+
+  <!-- Exp 3 -->
+  <rect x="20" y="172" width="95" height="3" fill="#475569"/>
+  <rect x="170" y="172" width="20" height="3" fill="#94a3b8"/>
+  <rect x="20" y="178" width="150" height="2" fill="#e2e8f0"/>
+  <rect x="20" y="182" width="120" height="2" fill="#e2e8f0"/>
+
+  <!-- Section: Formation -->
+  <rect x="20" y="200" width="40" height="4" fill="#334155"/>
+  <rect x="20" y="205" width="170" height="0.5" fill="#cbd5e1"/>
+  <rect x="20" y="213" width="120" height="3" fill="#475569"/>
+  <rect x="170" y="213" width="20" height="3" fill="#94a3b8"/>
+
+  <!-- Section: Skills (2 Columns) -->
+  <rect x="20" y="230" width="50" height="4" fill="#334155"/>
+  <rect x="20" y="235" width="170" height="0.5" fill="#cbd5e1"/>
+  
+  <!-- Col 1 -->
+  <rect x="20" y="243" width="70" height="2" fill="#e2e8f0"/>
+  <rect x="20" y="248" width="60" height="2" fill="#e2e8f0"/>
+  <rect x="20" y="253" width="65" height="2" fill="#e2e8f0"/>
+  
+  <!-- Col 2 -->
+  <rect x="110" y="243" width="70" height="2" fill="#e2e8f0"/>
+  <rect x="110" y="248" width="60" height="2" fill="#e2e8f0"/>
+  <rect x="110" y="253" width="65" height="2" fill="#e2e8f0"/>
+
+  <!-- Section: Languages -->
+  <rect x="70" y="270" width="70" height="3" rx="1" fill="#64748b"/>
+</svg>

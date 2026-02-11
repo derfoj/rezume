@@ -141,10 +141,11 @@ export const translations = {
             results: {
                 optimizationComplete: "OPTIMIZATION COMPLETE",
                 summary: "MATCH SUMMARY",
-                skillsDetected: "SKILLS DETECTED"
+                skillsDetected: "SKILLS DETECTED",
+                experiencesMatched: "EXPÉRIENCES SÉLECTIONNÉES"
             },
             widget: {
-                title: "Colinearity Match",
+                title: "Semantic Similarity",
                 subtitle: "Vector distance analysis."
             }
         },
@@ -322,10 +323,11 @@ export const translations = {
             results: {
                 optimizationComplete: "OPTIMIZATION COMPLETE",
                 summary: "MATCH SUMMARY",
-                skillsDetected: "SKILLS DETECTED"
+                skillsDetected: "SKILLS DETECTED",
+                experiencesMatched: "SELECTED EXPERIENCES"
             },
             widget: {
-                title: "Colinearity Match",
+                title: "Semantic Similarity",
                 subtitle: "Vector distance analysis."
             }
         },

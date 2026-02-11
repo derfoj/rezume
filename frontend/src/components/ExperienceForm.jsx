@@ -88,21 +88,21 @@ export default function ExperienceForm({ onSave, onCancel, initialData, t }) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg border border-gray-200 dark:border-slate-700">
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase">{t.title}</label>
+                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">{t.title}</label>
                     <input
                         type="text"
-                        className="w-full p-2 border rounded text-sm"
+                        className="w-full p-2 border rounded text-sm bg-white dark:bg-slate-900 dark:border-slate-600 dark:text-white"
                         value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })}
                     />
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase">{t.company}</label>
+                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">{t.company}</label>
                     <input
                         type="text"
-                        className="w-full p-2 border rounded text-sm"
+                        className="w-full p-2 border rounded text-sm bg-white dark:bg-slate-900 dark:border-slate-600 dark:text-white"
                         value={formData.company || ''} onChange={e => setFormData({ ...formData, company: e.target.value })}
                     />
                 </div>
@@ -110,7 +110,7 @@ export default function ExperienceForm({ onSave, onCancel, initialData, t }) {
 
             <div>
                 <div className="flex justify-between items-end mb-2">
-                    <label className="block text-xs font-bold text-gray-500 uppercase">{t.desc}</label>
+                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">{t.desc}</label>
                     
                     <div className="flex items-center gap-2">
                         {/* Undo Button - Only visible if there is a previous state */}
@@ -126,17 +126,17 @@ export default function ExperienceForm({ onSave, onCancel, initialData, t }) {
                         )}
 
                         {/* Formatting Toolbar */}
-                        <div className="flex gap-1 bg-white border border-gray-200 rounded p-1 mr-2">
-                            <button type="button" onClick={() => insertFormat('bold')} className="p-1 hover:bg-gray-100 rounded text-slate-600" title="Gras"><Bold size={14}/></button>
-                            <button type="button" onClick={() => insertFormat('italic')} className="p-1 hover:bg-gray-100 rounded text-slate-600" title="Italique"><Italic size={14}/></button>
-                            <button type="button" onClick={() => insertFormat('list')} className="p-1 hover:bg-gray-100 rounded text-slate-600" title="Liste"><List size={14}/></button>
+                        <div className="flex gap-1 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded p-1 mr-2">
+                            <button type="button" onClick={() => insertFormat('bold')} className="p-1 hover:bg-gray-100 dark:hover:bg-slate-600 rounded text-slate-600 dark:text-slate-300" title="Gras"><Bold size={14}/></button>
+                            <button type="button" onClick={() => insertFormat('italic')} className="p-1 hover:bg-gray-100 dark:hover:bg-slate-600 rounded text-slate-600 dark:text-slate-300" title="Italique"><Italic size={14}/></button>
+                            <button type="button" onClick={() => insertFormat('list')} className="p-1 hover:bg-gray-100 dark:hover:bg-slate-600 rounded text-slate-600 dark:text-slate-300" title="Liste"><List size={14}/></button>
                         </div>
 
                         {/* Tone Selector */}
                         <select 
                             value={selectedTone} 
                             onChange={(e) => setSelectedTone(e.target.value)}
-                            className="text-xs border border-purple-200 rounded px-2 py-1 bg-purple-50 text-purple-700 outline-none focus:ring-1 focus:ring-purple-300"
+                            className="text-xs border border-purple-200 dark:border-purple-700 rounded px-2 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200 outline-none focus:ring-1 focus:ring-purple-300"
                         >
                             <option value="standard">Standard</option>
                             <option value="dynamic">Dynamique</option>
@@ -157,7 +157,7 @@ export default function ExperienceForm({ onSave, onCancel, initialData, t }) {
                 </div>
                 <textarea
                     id={`desc-${formData.id || 'new'}`}
-                    className="w-full p-3 border rounded-lg text-sm h-32 focus:ring-2 focus:ring-purple-100 outline-none transition-all font-sans leading-relaxed"
+                    className="w-full p-3 border rounded-lg text-sm h-32 focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900 outline-none transition-all font-sans leading-relaxed bg-white dark:bg-slate-900 dark:border-slate-600 dark:text-white"
                     placeholder={t.descPlaceholder}
                     value={formData.description || ''} onChange={e => setFormData({ ...formData, description: e.target.value })}
                 ></textarea>
@@ -166,25 +166,25 @@ export default function ExperienceForm({ onSave, onCancel, initialData, t }) {
 
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase">{t.start}</label>
+                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">{t.start}</label>
                     <input
                         type="text" placeholder="ex: Jan 2022"
-                        className="w-full p-2 border rounded text-sm"
+                        className="w-full p-2 border rounded text-sm bg-white dark:bg-slate-900 dark:border-slate-600 dark:text-white"
                         value={formData.start_date || ''} onChange={e => setFormData({ ...formData, start_date: e.target.value })}
                     />
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase">{t.end}</label>
+                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">{t.end}</label>
                     <input
                         type="text" placeholder="ex: Présent ou Déc 2023"
-                        className="w-full p-2 border rounded text-sm"
+                        className="w-full p-2 border rounded text-sm bg-white dark:bg-slate-900 dark:border-slate-600 dark:text-white"
                         value={formData.end_date || ''} onChange={e => setFormData({ ...formData, end_date: e.target.value })}
                     />
                 </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={onCancel} className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 font-medium">{t.cancel}</button>
+                <button type="button" onClick={onCancel} className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white font-medium">{t.cancel}</button>
                 <button type="submit" className="px-4 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 font-bold shadow-sm">{t.save}</button>
             </div>
         </form>

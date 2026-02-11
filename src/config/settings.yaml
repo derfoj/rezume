@@ -6,7 +6,7 @@ max_output_tokens: 4000
 paths:
   knowledge_base: "data/knowledge_base.json"
   offers: "data/exemples_offres/exemple_offre.txt"
-  templates: "src/interfaces/prompts/cv_template.tex"
+  templates: "src/templates/"
   output_dir: "outputs/generated_cvs/"
   parser_prompt: "src/config/prompts/parser.yaml"
   generator_prompt: "src/config/prompts/generator.yaml"

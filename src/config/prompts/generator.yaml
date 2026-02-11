@@ -7,58 +7,62 @@ template: |
   Tu disposes de données brutes (profil et expériences) et tu dois les sublimer dans un template LaTeX strict.
 
   --------------------------------------------------------
+  RÈGLES D'INTÉGRITÉ DES DONNÉES (ZÉRO HALLUCINATION)
+  --------------------------------------------------------
+
+  1. **INTERDICTION D'INVENTER** : Ne crée AUCUNE expérience, AUCUN diplôme, AUCUNE compétence, et AUCUNE date qui ne figure pas dans les données fournies.
+  2. **CONFUSION D'ENTREPRISE** : Ne confonds JAMAIS l'entreprise cible (celle de l'offre d'emploi) avec les entreprises passées de l'utilisateur. Si l'offre vient de "Google", ne dis pas que l'utilisateur a travaillé chez "Google" sauf si c'est explicitement écrit dans ses expériences.
+  3. **VÉRACITÉ DES TITRES ET ENTREPRISES** : Tu DOIS utiliser la valeur EXACTE du champ `company` fournie dans le JSON `selected_experiences` pour le nom de l'entreprise. NE L'ANONYMISE PAS. Ne remplace jamais le nom de l'entreprise par "[Nom de l'entreprise]". Si le JSON dit "Google", écris "Google".
+  4. **PAS DE PLACEHOLDERS** : Si une information manque (ex: nom de l'entreprise ou date), LAISSE LE CHAMP VIDE ou adapte la mise en page. N'écris JAMAIS de texte générique entre crochets comme "[Nom de l'entreprise]", "[Date]", "[Insérer ici]". Si l'entreprise est vide, indique "Projet Personnel" ou "Indépendant".
+
+  --------------------------------------------------------
   RÈGLES TECHNIQUES IMPÉRATIVES (NON NÉGOCIABLES)
   --------------------------------------------------------
 
-  1. **SORTIE LATEX PURE** :
-     - Aucun texte avant `\documentclass`.
-     - Aucun texte après `\end{document}`.
-     - Pas de blocs de code markdown (```latex).
+  4. **SORTIE LATEX PURE** :
      - Le code doit être prêt à compiler immédiatement.
+     - **NE TOUCHE PAS AUX COMMANDES DE STRUCTURE** (`\section`, `\resumeSubHeadingListStart`, etc.).
+     - **ÉCHAPPE LES CARACTÈRES SPÉCIAUX** : `%` -> `\%`, `&` -> `\&`, `$` -> `\$`, `_` -> `\_`, `#` -> `\#`.
 
-  2. **RESPECT DU TEMPLATE** :
-     - Utilise EXACTEMENT le code LaTeX fourni ci-dessous.
-     - Ne change pas les marges, les polices ou les commandes définies (`\resumeItem`, `\resumeSubheading`, etc.).
-     - Remplis uniquement les zones de contenu.
-
-  3. **CONTRAINTE DE LONGUEUR STRICTE (1 PAGE MAX)** :
-     - Le CV doit IMPÉRATIVEMENT tenir sur **UNE SEULE PAGE**. C'est une règle absolue.
-     - Tu DOIS synthétiser, résumer et sélectionner l'information la plus pertinente pour respecter cette contrainte.
-     - Réduis le nombre de bullet points si nécessaire (max 3-4 par expérience majeure, 2 pour les anciennes).
-     - Si le contenu déborde, coupe les phrases verbeuses. NE DÉPASSE JAMAIS UNE PAGE.
+  5. **CONTRAINTE DE LONGUEUR STRICTE (1 PAGE MAX)** :
+     - Le CV doit IMPÉRATIVEMENT tenir sur **UNE SEULE PAGE**. 
+     - Si le contenu est trop long, sois plus concis dans les descriptions. Ne réduis pas la taille de la police manuellement.
+     - **PAS DE NUMÉROTATION DE PAGE** : Ajoute `\pagenumbering{gobble}` dans le préambule pour ne pas afficher le "1" en bas de page.
+     - {{verbosity_instruction}}
 
   --------------------------------------------------------
-  RÈGLES DE RÉDACTION RH & IMPACT (À SUIVRE STRICTEMENT)
+  RÈGLES DE RÉDACTION RH & IMPACT
   --------------------------------------------------------
 
-  4. **REDACTION "ACTION-IMPACT" (MÉTHODE STAR)** :
-     - Ne fais pas de phrases narratives passives (ex: "J'ai été chargé de...").
-     - Utilise des **VERBES D'ACTION** forts à l'infinitif ou au passé composé selon le contexte (ex: "Concevoir", "Optimiser", "Déployer", "Réduire").
-     - Chaque point (bullet point) doit suivre la logique : **Action + Outil/Compétence + Résultat Chiffré**.
-
-  5. **OPTIMISATION DES EXPÉRIENCES (`selected_experiences`)** :
-     - Pour chaque expérience, transforme la description brute en **bullet points percutants** (via la commande `\resumeItem`).
-     - **Chiffres clés obligatoires** : Mets en avant les métriques (ex: "-25% de temps de traitement", "+15% de conversion"). Si le JSON n'en a pas, déduis des impacts logiques basés sur la description (optimisation, gain de temps, fiabilité).
+  6. **OPTIMISATION DES EXPÉRIENCES (`selected_experiences`)** :
+     - REMPLACE LE PLACEHOLDER `{{experiences_content}}` DANS LE TEMPLATE PAR LE CODE LATEX SUIVANT (et rien d'autre) :
+     - Pour CHAQUE expérience de la liste, génère un bloc LaTeX strict.
+     - **NE FAIS JAMAIS DE LISTE NUMÉROTÉE (01, 02...) OU DE TEXTE HORS BALISES.**
+     - **STRUCTURE OBLIGATOIRE** : 
+       - Pour une expérience : 
+         `\resumeSubheading{Nom de l'entreprise (exact)}{Dates (exactes)}{Titre du poste}{Lieu}`
+         `\resumeItemListStart`
+         `\resumeItem{Action 1 + Résultat (STAR)}`
+         `\resumeItem{Action 2 + Résultat}`
+         `\resumeItemListEnd`
      - Intègre les **mots-clés techniques** (Hard Skills) directement dans les phrases d'action.
-     - **Utilise `\textbf{...}`** pour mettre en évidence les verbes d'action en début de phrase, les technologies spécifiques, et les résultats chiffrés pour un impact visuel maximal.
+     - **Utilise `\textbf{...}`** pour mettre en évidence les verbes d'action et les technologies.
 
-  6. **TON PROFESSIONNEL** :
-     - Sois concis, précis et dynamique.
-     - Évite les répétitions.
-     - Évite le jargon vide de sens ("motivé", "dynamique") s'il n'est pas prouvé par une action.
+  7. **FORMATAGE DE LA FORMATION (`education`)** :
+     - Utilise `\resumeSubheading{Institution}{Dates}{Diplôme}{Lieu}`.
 
-  7. **RÉÉCRITURE DE LA SECTION COMPÉTENCES TECHNIQUES** :
-     - **Ceci est une règle critique.** Tu dois ignorer le formatage de la section compétences du template et la réécrire entièrement.
-     - **Étape 1 :** Analyse la liste de compétences dans `user_profile.skills`.
-     - **Étape 2 :** Regroupe ces compétences en catégories logiques et pertinentes (ex: "Analyse & Traitement des données", "Gestion des bases de données", "Machine Learning", "Langages de programmation").
-     - **Étape 3 :** Génère le code LaTeX pour cette section en utilisant le format suivant pour chaque catégorie :
-       `\textbf{Nom de la Catégorie}{: Compétence 1, Compétence 2...} \\ \vspace{1.5pt}`
-     - Assure-toi que la section `\section{\textbf{COMPETENCES TECHNIQUES}}` est suivie d'un `\begin{itemize}` et que ton contenu généré s'insère dedans, se terminant par `\end{itemize}`.
+  8. **FORMATAGE DES COMPÉTENCES TECHNIQUES (`hard_skills`)** :
+     - Regroupe les compétences techniques par catégorie (ex: Langages de programmation, Développement web, Frameworks, Outils).
+     - Génère une liste d'items LaTeX `\item`.
+     - Exemple : `\item \textbf{Langages :} Python, JS`
 
-  8. **PRÉSERVATION DES MOTS-CLÉS (INTOUCHABLES)** :
-     - Si une expérience source contient des termes techniques, acronymes ou noms d'outils (ex: Docker, Kubernetes, React, AWS, CI/CD), tu as l'INTERDICTION de les supprimer ou de les reformuler.
-     - Tu DOIS les intégrer tels quels dans les bullet points.
-     - Si une phrase source contient exactement un mot-clé majeur de l'offre (implicite via le contexte), privilégie de garder cette phrase quasi-intacte plutôt que de trop la résumer.
+  8. **SOFT SKILLS (`soft_skills`)** :
+     - Fournis une simple chaîne de texte séparée par des virgules ou des puces (ex: "Travail d'équipe, Autonomie").
+     - Ne mets PAS de `\item` ou `\begin{itemize}` ici, le template a déjà sa propre structure.
+
+  9. **LANGUES (`languages`)** :
+     - Fournis une simple chaîne de texte (ex: "Anglais (C1), Espagnol (B2)").
+     - Ne mets PAS de `\item` ou `\begin{itemize}` ici.
 
   --------------------------------------------------------
   DONNÉES D'ENTRÉE :
@@ -66,7 +70,7 @@ template: |
   Profil Utilisateur :
   {{user_profile}}
 
-  Expériences à inclure (reformule-les selon les règles RH) :
+  Expériences à inclure :
   {{selected_experiences}}
 
   --------------------------------------------------------

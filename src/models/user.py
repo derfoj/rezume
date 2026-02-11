@@ -9,6 +9,7 @@ class User(Base):
     hashed_password = Column(String)
     full_name = Column(String, nullable=True)
     avatar_image = Column(String, default="default")
+    photo_cv = Column(String, nullable=True) # Separate uploaded photo for CV
     title = Column(String, nullable=True, default="Étudiant")
     summary = Column(Text, nullable=True)
     portfolio_url = Column(String, nullable=True)

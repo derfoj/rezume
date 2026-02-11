@@ -59,6 +59,10 @@ def get_templates():
             return json.load(f)
     return []
 
+from pathlib import Path
+from src.core.cv_validator import validate_cv
+import urllib.parse
+
 @router.post("/generate-cv")
 async def generate_cv_endpoint(
     request: CVGenerationRequest, 
@@ -68,39 +72,74 @@ async def generate_cv_endpoint(
 ):
     """
     Generates a PDF CV using the LLM-based Generator Agent and returns it for download.
+    Includes an auto-correction loop to ensure compliance (max 2 retries).
     """
     try:
         # 1. Load and validate the user profile
         user_profile = get_profile_from_db(db, user_id=current_user.id)
         
-        # 2. Instantiate the agent and generate the CV
-        # Pass user LLM preferences
+        # 2. Instantiate the agent
         generator = GeneratorAgent(
             provider=current_user.llm_provider,
             model=current_user.llm_model,
             api_key=current_user.openai_api_key if current_user.llm_provider == "openai" else None 
-            # Note: For Anthropic/Gemini, we haven't added specific API key columns yet, 
-            # assuming env vars or re-using openai_key field (not ideal) or we can add them later.
-            # For now, let's rely on .env for non-OpenAI keys unless user wants to add them to DB.
         )
         user_profile_dict = _profile_to_dict(user_profile)
         
+        # Initial Generation
         pdf_path, tex_path = generator.generate_cv_from_llm(
             user_profile=user_profile_dict,
             experiences=request.experiences,
             template_name=current_user.selected_template or "classic"
         )
         
-        # 3. Schedule temporary files for cleanup (including the .tex file)
-        cleanup_list = [tex_path, tex_path.replace(".tex", ".log"), tex_path.replace(".tex", ".aux")]
-        background_tasks.add_task(cleanup_files, cleanup_list)
+        # Auto-correction Loop
+        MAX_RETRIES = 2
+        attempt = 0
+        
+        while attempt < MAX_RETRIES:
+            validation_result = validate_cv(tex_path)
+            
+            if validation_result["valid"]:
+                logger.info("CV validation passed on attempt %d.", attempt + 1)
+                break
+            
+            # Construct feedback from warnings
+            warnings = validation_result.get("warnings", [])
+            feedback_intro = "URGENT : LE CV GÉNÉRÉ EST INVALIDE."
+            feedback_details = "\n".join(warnings)
+            feedback_action = "Tu DOIS corriger ces erreurs MAINTENANT. Si le problème est la longueur (plus d'une page), SOIS RADICAL : supprime les expériences les plus anciennes, réduis les descriptions à 1-2 puces maximum, ou supprime le résumé. Il vaut mieux un CV incomplet qui tient sur 1 page qu'un CV trop long."
+            
+            feedback = f"{feedback_intro}\nProblèmes détectés :\n{feedback_details}\n\nINSTRUCTION DE CORRECTION :\n{feedback_action}"
+            
+            logger.warning(f"CV validation failed on attempt {attempt + 1}. Retrying with feedback: {feedback}")
+            
+            # Retry generation with feedback using the SAME session directory
+            session_dir = Path(tex_path).parent
+            pdf_path, tex_path = generator.generate_cv_from_llm(
+                user_profile=user_profile_dict,
+                experiences=request.experiences,
+                template_name=current_user.selected_template or "classic",
+                feedback=feedback,
+                session_dir=session_dir
+            )
+            attempt += 1
+        
+        # Final validation check (to populate headers correctly)
+        validation_result = validate_cv(tex_path)
+        
+        # Encode validation result for header
+        validation_header = urllib.parse.quote(json.dumps(validation_result))
 
-        # 4. Return the generated file for download
+        # 4. Return the generated file for download with validation headers
         return FileResponse(
             path=pdf_path,
             filename="reZume_CV_Generated.pdf",
             media_type='application/pdf',
-            headers={"Content-Disposition": "attachment; filename=reZume_CV_Generated.pdf"}
+            headers={
+                "Content-Disposition": "attachment; filename=reZume_CV_Generated.pdf",
+                "X-CV-Validation-Report": validation_header
+            }
         )
     except (FileNotFoundError, ValueError) as e:
         # Catches issues like a missing knowledge base or JSON schema validation errors.

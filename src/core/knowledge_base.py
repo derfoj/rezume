@@ -133,7 +133,7 @@ def get_profile_from_db(db: Session, user_id: int) -> Profile:
         email=user.email,
         portfolio_url=user.portfolio_url or "",
         linkedin_url=user.linkedin_url or "",
-        photo_path=user.avatar_image,
+        photo_path=user.photo_cv or "",
         skills=hard_skills,
         soft_skills=soft_skills,
         experiences=experiences,

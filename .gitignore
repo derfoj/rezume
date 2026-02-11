@@ -39,3 +39,12 @@ ev.txt
 resumer.txt
 
 presentation.txt
+
+#test 
+.pytest_cache/
+
+#json et faiss 
+*.json
+*.faiss
+#node modules
+node_modules/

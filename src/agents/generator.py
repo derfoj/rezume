@@ -10,6 +10,33 @@ from src.core.utils import load_yaml, load_text
 from src.core.llm_provider import get_llm
 from src.config.constants import TEMPLATES_DIR
 
+def clean_unicode_for_latex(text: str) -> str:
+    """
+    Replaces common Unicode characters that break pdflatex with LaTeX equivalents.
+    """
+    replacements = {
+        "ᵉ": r"\textsuperscript{e}",
+        "¹": r"\textsuperscript{1}",
+        "²": r"\textsuperscript{2}",
+        "³": r"\textsuperscript{3}",
+        "’": "'",
+        "…": "...",
+        "–": "--",
+        "—": "---",
+        "“": "``",
+        "”": "''",
+        "«": "\\guillemotleft{}",
+        "»": "\\guillemotright{}",
+        "€": "\\euro{}",
+        "oe": "\\oe{}",
+        "OE": "\\OE{}",
+        "æ": "\\ae{}",
+        "Æ": "\\AE{}"
+    }
+    for char, replacement in replacements.items():
+        text = text.replace(char, replacement)
+    return text
+
 def escape_latex_special_chars(text: str) -> str:
     """
     Escapes LaTeX special characters in a string to prevent injection or compilation errors.
@@ -18,6 +45,7 @@ def escape_latex_special_chars(text: str) -> str:
         return text
     
     chars = {
+        "\\": r"\textbackslash{}", # Must be first to avoid escaping escapes
         "&": r"\&",
         "%": r"\%",
         "$": r"\$",
@@ -27,7 +55,6 @@ def escape_latex_special_chars(text: str) -> str:
         "}": r"\}",
         "~": r"\textasciitilde{}",
         "^": r"\textasciicircum{}",
-        "\\": r"\textbackslash{}",
     }
     
     # Simple replacement loop
@@ -35,12 +62,18 @@ def escape_latex_special_chars(text: str) -> str:
         text = text.replace(char, escaped)
     return text
 
-def sanitize_data_recursive(data):
+def sanitize_data_recursive(data, skip_keys=None):
     """Recursively sanitizes dictionary or list values."""
+    if skip_keys is None:
+        skip_keys = set()
+        
     if isinstance(data, dict):
-        return {k: sanitize_data_recursive(v) for k, v in data.items()}
+        return {
+            k: (v if k in skip_keys else sanitize_data_recursive(v, skip_keys)) 
+            for k, v in data.items()
+        }
     elif isinstance(data, list):
-        return [sanitize_data_recursive(i) for i in data]
+        return [sanitize_data_recursive(i, skip_keys) for i in data]
     elif isinstance(data, str):
         return escape_latex_special_chars(data)
     else:
@@ -60,22 +93,76 @@ class GeneratorAgent:
             print(f"❌ Erreur lors de l'init du GeneratorAgent: {e}")
 
     def _clean_llm_output(self, latex_code: str) -> str:
-        """Strips markdown code blocks and leading/trailing whitespace."""
-        code = latex_code.strip()
-        if code.startswith("```latex"):
-            code = code[len("```latex"):].strip()
-        if code.endswith("```"):
-            code = code[:-len("```")].strip()
+        """
+        Robustly extracts LaTeX code from LLM output, handling markdown blocks 
+        and conversational text.
+        """
+        import re
         
-        # Ensure it starts with \documentclass
-        if not code.startswith(r"\\documentclass"):
-            return latex_code # Return original if cleaning is likely wrong
+        # Pattern to find content inside ```latex ... ``` or ``` ... ```
+        # Flags: dotall to match newlines
+        match = re.search(r"```(?:latex)?\s*(.*?)\s*```", latex_code, re.DOTALL | re.IGNORECASE)
         
-        return code
+        if match:
+            clean_code = match.group(1).strip()
+            # Double check if it looks like latex
+            if clean_code.startswith("\\documentclass"):
+                return clean_code
+        
+        # Fallback: Look for start of documentclass
+        if not match:
+            start_idx = latex_code.find("\\documentclass")
+            if start_idx != -1:
+                latex_code = latex_code[start_idx:]
+            else:
+                # If no documentclass, maybe it's just the body? Unlikely for this agent.
+                pass
+        else:
+            latex_code = match.group(1).strip()
 
-    def generate_cv_from_llm(self, user_profile: Dict[str, Any], experiences: List[Dict[str, Any]], template_name: str = "classic") -> (str, str):
+        # Final cleanup: Remove anything after \end{document}
+        end_marker = "\\end{document}"
+        end_idx = latex_code.find(end_marker)
+        if end_idx != -1:
+            latex_code = latex_code[:end_idx + len(end_marker)]
+            
+        return latex_code.strip()
+
+    def _sanitize_experiences_for_llm(self, experiences: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Cleans experience data to remove placeholders and handle missing fields
+        before sending to the LLM.
+        """
+        cleaned = []
+        for exp in experiences:
+            # Create a copy to avoid modifying the original list
+            item = exp.copy()
+            
+            # 1. Clean Company Name
+            company = item.get("company", "").strip()
+            # Check for common placeholders or empty strings
+            if not company or any(p in company for p in ["[", "Nom de l'entreprise", "Company Name"]):
+                item["company"] = "Projet Personnel / Indépendant"
+            
+            # 2. Clean Dates
+            start_date = item.get("start_date", "").strip()
+            end_date = item.get("end_date", "").strip()
+            
+            if any(p in start_date for p in ["[", "Date"]):
+                item["start_date"] = ""
+            if any(p in end_date for p in ["[", "Date"]):
+                item["end_date"] = ""
+                
+            cleaned.append(item)
+        return cleaned
+
+    def generate_cv_from_llm(self, user_profile: Dict[str, Any], experiences: List[Dict[str, Any]], template_name: str = "classic", feedback: str = None, session_dir: Path = None) -> (str, str):
         """
         Generates a PDF CV using the LLM-as-a-template-engine approach.
+        
+        Args:
+            feedback: Optional string containing specific instructions to fix errors from a previous run.
+            session_dir: Optional Path to an existing session directory (for retries).
         
         Returns:
             A tuple of (pdf_path, tex_path).
@@ -86,8 +173,50 @@ class GeneratorAgent:
         print(f"🔹 Préparation du contexte pour la génération par LLM (Template: {template_name})...")
         
         # --- SECURITY FIX: Sanitize Input Data ---
-        safe_profile = sanitize_data_recursive(user_profile)
-        safe_experiences = sanitize_data_recursive(experiences)
+        
+        # Resolve photo_path to absolute path for LaTeX
+        if "photo_path" in user_profile and user_profile["photo_path"]:
+            photo_name = user_profile["photo_path"]
+            
+            # Map predefined avatar IDs to filenames
+            avatar_map = {
+                "man_laptop": "avatar_man_laptop.png",
+                "woman_laptop": "avatar_woman_laptop.png",
+                "man_coffee": "avatar_man_coffee.png",
+                "woman_rocket": "avatar_woman_rocket.png",
+                "marc_aurel": "the_marc_aurel.png",
+                "avatar_femme": "avatar_femme.png"
+            }
+            
+            # Use mapped filename if it's a known ID, otherwise keep original (for uploads)
+            if photo_name in avatar_map:
+                photo_name = avatar_map[photo_name]
+
+            # Potential locations for images
+            candidates = [
+                Path(__file__).resolve().parent.parent.parent / "frontend" / "src" / "assets" / photo_name,
+                Path(__file__).resolve().parent.parent.parent / "data" / "img" / photo_name, # Handles uploads/filename
+            ]
+            
+            resolved_path = None
+            for cand in candidates:
+                if cand.exists():
+                    resolved_path = cand
+                    break
+            
+            if resolved_path:
+                # LaTeX requires forward slashes even on Windows
+                user_profile["photo_path"] = str(resolved_path).replace("\\", "/")
+            else:
+                # If file not found, remove it to avoid LaTeX errors or set to empty string
+                print(f"⚠️ Image '{photo_name}' introuvable. Le CV sera généré sans photo.")
+                user_profile["photo_path"] = ""
+
+        safe_profile = sanitize_data_recursive(user_profile, skip_keys={"photo_path"})
+        
+        # CLEAN AND SANITIZE EXPERIENCES
+        cleaned_experiences = self._sanitize_experiences_for_llm(experiences)
+        safe_experiences = sanitize_data_recursive(cleaned_experiences)
         # -----------------------------------------
 
         template_path = TEMPLATES_DIR / f"{template_name}.tex"
@@ -98,6 +227,15 @@ class GeneratorAgent:
         cv_template_content = load_text(template_path)
         
         prompt_template = load_yaml("src/config/prompts/generator.yaml")['template']
+
+        # Determine verbosity based on experience count
+        num_experiences = len(experiences)
+        if num_experiences <= 3:
+            verbosity_instruction = "HAUTE VERBOSITÉ REQUISE : Le candidat a peu d'expériences sélectionnées (3 ou moins). Tu DOIS impérativement étoffer chaque bullet point. Détaille le contexte, la méthodologie, les défis techniques et les résultats. Chaque expérience doit occuper un espace visuel conséquent pour éviter que le CV ne paraisse vide. Ne sois PAS concis."
+        elif num_experiences >= 5:
+            verbosity_instruction = "VERBOSITÉ STRICTE (MAX 1 PAGE) : Le candidat a beaucoup d'expériences (5 ou plus). Tu DOIS être EXTRÊMEMENT concis. Limite-toi à 2-3 bullet points MAX par expérience. Va droit au but : Action -> Résultat. Supprime tout détail superflu. L'objectif absolu est de faire tenir tout le CV sur une seule page sans réduire la police."
+        else:
+            verbosity_instruction = "VERBOSITÉ STANDARD : Sois concis, direct et percutant. Privilégie la densité d'information à la longueur."
         
         # Use .replace() for safety with LaTeX syntax
         final_prompt = prompt_template.replace(
@@ -106,11 +244,19 @@ class GeneratorAgent:
             "{{selected_experiences}}", json.dumps(safe_experiences, indent=2, ensure_ascii=False)
         ).replace(
             "{{cv_template}}", cv_template_content
+        ).replace(
+            "{{verbosity_instruction}}", verbosity_instruction
         )
+
+        if feedback:
+            print(f"⚠️ Correction demandée : {feedback}")
+            final_prompt += f"\n\nATTENTION : Une version précédente a été rejetée pour les raisons suivantes :\n{feedback}\nTu DOIS corriger ces erreurs impérativement dans cette nouvelle version."
 
         print("🔹 Appel du LLM pour la génération du code LaTeX...")
         try:
             generated_latex_code = self.llm.chat(final_prompt)
+            # Pre-clean Unicode characters that might break compilation
+            generated_latex_code = clean_unicode_for_latex(generated_latex_code)
             generated_latex_code = self._clean_llm_output(generated_latex_code)
         except Exception as e:
             print(f"❌ Erreur lors de l'appel au LLM: {e}")
@@ -118,18 +264,25 @@ class GeneratorAgent:
         
         print("⚙️ Compilation du PDF en cours...")
         
-        output_dir = Path(__file__).resolve().parent.parent.parent / "outputs" / "generated_cvs"
-        os.makedirs(output_dir, exist_ok=True)
+        if not session_dir:
+            # Create a unique directory for this generation session
+            unique_id = uuid.uuid4()
+            base_name = f"rezume_llm_{unique_id}"
+            session_dir = Path(__file__).resolve().parent.parent.parent / "outputs" / "generated_cvs" / base_name
+            os.makedirs(session_dir, exist_ok=True)
+        else:
+            base_name = session_dir.name
         
-        unique_id = uuid.uuid4()
-        base_name = f"rezume_llm_{unique_id}"
-        tex_path = output_dir / f"{base_name}.tex"
-        pdf_path = output_dir / f"{base_name}.pdf"
+        # Ensure session_dir is a Path object
+        session_dir = Path(session_dir)
+
+        tex_path = session_dir / f"{base_name}.tex"
+        pdf_path = session_dir / f"{base_name}.pdf"
 
         with open(tex_path, "w", encoding="utf-8") as f:
             f.write(generated_latex_code)
 
-        cmd = ["pdflatex", "-interaction=nonstopmode", f"-output-directory={str(output_dir)}", str(tex_path)]
+        cmd = ["pdflatex", "-interaction=nonstopmode", f"-output-directory={str(session_dir)}", str(tex_path)]
         try:
             # We run compilation twice.
             subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')

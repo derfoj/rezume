@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from thefuzz import process
 
 from src.agents.parser import ParserAgent
+from src.agents.optimizer import OptimizerAgent
 from src.core.vector_store import search_vector_store, build_vector_store
 from src.core.knowledge_base import get_profile_from_db
 from sqlalchemy.orm import Session
@@ -32,7 +33,17 @@ def initialize_parser_agent():
     
     return parser_agent
 
+def initialize_optimizer_agent():
+    """Initializes and returns the OptimizerAgent."""
+    try:
+        logger.info("Initializing OptimizerAgent...")
+        return OptimizerAgent()
+    except Exception as e:
+        logger.error(f"Failed to initialize OptimizerAgent: {e}")
+        return None
+
 parser_agent = initialize_parser_agent()
+optimizer_agent = initialize_optimizer_agent()
 
 def _calculate_fuzzy_keyword_score(required_skills: list, user_skills: list) -> float:
     """
@@ -153,9 +164,12 @@ def run_analysis_pipeline(raw_text: str, db: Session = None, user_id: int = 1) -
                 
                 build_vector_store(docs, index_name)
         
-        initial_matches = search_vector_store(query_str, index_name=index_name, top_n=10)
+        initial_matches = search_vector_store(query_str, index_name=index_name, top_n=20)
         
-        matches = _diversify_results(initial_matches, top_n=3)
+        # Filter only for experiences to avoid matching education/skills here
+        experience_matches = [m for m in initial_matches if m.get('type') == 'experience']
+        
+        matches = _diversify_results(experience_matches, top_n=3)
 
         # --- FALLBACK: KEYWORD MATCHING IF SEMANTIC SEARCH IS WEAK ---
         if not matches and profile.experiences:
@@ -198,27 +212,34 @@ def run_analysis_pipeline(raw_text: str, db: Session = None, user_id: int = 1) -
                 m.pop('embedding', None)
                 m.pop('keyword_score', None)
                 
-                # --- NEW: Sentence-level extraction ---
-                # Find the sentence best matching the skills from offer
-                description = m.get('description', '')
-                doc_sentences = description.replace(';', '.').split('.') # Basic sentence splitting
-                
-                best_sentence = ""
-                max_hits = 0
-                
-                for sentence in doc_sentences:
-                    sentence_clean = sentence.strip()
-                    if len(sentence_clean) < 10: continue
+                # --- NEW: Ensure metadata fields are at top level for frontend ---
+                if 'metadata' in m:
+                    for key, val in m['metadata'].items():
+                        if key not in m:
+                            m[key] = val
+
+                # --- NEW: LLM-based optimization for each experience ---
+                try:
+                    original_desc = m.get('description', '')
+                    # We optimize the description specifically for this job offer
+                    # SANITIZED CONTEXT: We pass only skills and missions to avoid hallucinating the company name
+                    sanitized_context = f"Compétences recherchées: {', '.join(skills_from_offer)}. Missions: {' '.join(missions)}"
                     
-                    hits = sum(1 for skill in skills_from_offer if skill.lower() in sentence_clean.lower())
-                    if hits > max_hits:
-                        max_hits = hits
-                        best_sentence = sentence_clean
-                
-                if best_sentence:
-                     bullet_points.append(f"{m.get('title')}: {best_sentence}...")
-                else:
-                    # Fallback to first sentence if no keyword hit found
+                    if optimizer_agent:
+                        optimized_desc = optimizer_agent.optimize_description(
+                            original_desc, 
+                            job_offer=sanitized_context
+                        )
+                        m['description'] = optimized_desc
+                    else:
+                        optimized_desc = original_desc
+
+                    # Create a summary bullet point for display
+                    bullet_points.append(f"{m.get('title')}: {optimized_desc.split('.')[0]}...")
+                except Exception as e:
+                    logger.warning(f"Failed to optimize description for {m.get('title')}: {e}")
+                    # Fallback to original excerpt logic
+                    description = m.get('description', '')
                     bullet_points.append(f"{m.get('title')}: {description.split('.')[0]}...")
         else:
             final_score = max(0, min(100, int(keyword_score)))

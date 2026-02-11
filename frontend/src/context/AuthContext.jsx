@@ -6,6 +6,12 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(localStorage.getItem('token'));
     const [user, setUser] = useState(null);
+    const [profileData, setProfileData] = useState({
+        experiences: [],
+        education: [],
+        skills: [],
+        languages: []
+    });
     const [isSessionExpired, setIsSessionExpired] = useState(false);
     const [isServerDown, setIsServerDown] = useState(false);
     
@@ -106,6 +112,25 @@ export const AuthProvider = ({ children }) => {
                 const userData = await res.json();
                 setUser(userData);
 
+                // Pre-fetch related profile data with no-cache to ensure freshness
+                const headers = { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' };
+                const [expRes, eduRes, skillRes, langRes] = await Promise.all([
+                    fetch(`${API_URL}/api/profile/experiences`, { headers }),
+                    fetch(`${API_URL}/api/profile/education`, { headers }),
+                    fetch(`${API_URL}/api/profile/skills`, { headers }),
+                    fetch(`${API_URL}/api/profile/languages`, { headers })
+                ]);
+
+                const profileDataUpdates = {};
+                if (expRes.ok) profileDataUpdates.experiences = await expRes.json();
+                if (eduRes.ok) profileDataUpdates.education = await eduRes.json();
+                if (skillRes.ok) profileDataUpdates.skills = await skillRes.json();
+                if (langRes.ok) profileDataUpdates.languages = await langRes.json();
+
+                console.log("DEBUG: fetchUser data received:", profileDataUpdates);
+
+                setProfileData(prev => ({ ...prev, ...profileDataUpdates }));
+
                 // Sync local theme with user preference if it exists
                 if (userData.theme) {
                     setTheme(userData.theme);
@@ -114,6 +139,7 @@ export const AuthProvider = ({ children }) => {
                 return true;
             } else {
                 setUser(null);
+                setProfileData({ experiences: [], education: [], skills: [], languages: [] });
                 return false;
             }
         } catch (error) {
@@ -199,7 +225,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ token, user, login, logout, isAuthenticated, refreshUser, theme, toggleTheme }}>
+        <AuthContext.Provider value={{ token, user, profileData, login, logout, isAuthenticated, refreshUser, theme, toggleTheme }}>
             {children}
             <SessionExpiredModal 
                 show={isSessionExpired} 

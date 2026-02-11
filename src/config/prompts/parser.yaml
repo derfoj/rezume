@@ -1,13 +1,8 @@
 name: "parser_agent"
 description: "Extraction des compétences, missions et valeurs d'une offre d'emploi."
 template: |
-  Tu es un expert RH et analyste de texte.
-  À partir de l'offre suivante, identifie :
-  - les compétences (skills) sous forme de liste,
-  - les missions principales (missions) sous forme de liste,
-  - les valeurs ou culture d'entreprise (values) sous forme de liste.
-
-  Offre :
-  {{offer_text}}
-
-  Réponds uniquement en JSON valide avec les clés "skills", "missions", "values".
+  You are an expert recruitment analyst. Extract structured information, like skills needed and soft skills, from the following job offer text.
+  Ensure the output strictly follows the schema.
+  
+  OFFER TEXT:
+  {offer_text}

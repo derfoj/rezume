@@ -6,10 +6,11 @@ import { Plus, Trash2, Pencil, Briefcase, Code, X, User, BookOpen, Languages as 
 import ExperienceForm from '../components/ExperienceForm';
 import EducationForm from '../components/EducationForm';
 import AIProcessingOverlay from '../components/AIProcessingOverlay';
+import FormattedText from '../components/FormattedText';
 import { translations } from '../config/translations';
 
 export default function ProfileEditor() {
-    const { token, user } = useAuth();
+    const { token, user, profileData, refreshUser } = useAuth();
     const { addToast } = useToast();
     const navigate = useNavigate();
     const fileInputRef = useRef(null);
@@ -19,17 +20,41 @@ export default function ProfileEditor() {
 
     // Data States
     const [userProfile, setUserProfile] = useState({
-        full_name: '',
-        title: '',
-        summary: '',
-        portfolio_url: '',
-        linkedin_url: '',
-        email: ''
+        full_name: user?.full_name || '',
+        title: user?.title || '',
+        summary: user?.summary || '',
+        portfolio_url: user?.portfolio_url || '',
+        linkedin_url: user?.linkedin_url || '',
+        email: user?.email || '',
+        avatar_image: user?.avatar_image || 'default',
+        photo_cv: user?.photo_cv || ''
     });
-    const [experiences, setExperiences] = useState([]);
-    const [education, setEducation] = useState([]);
-    const [skills, setSkills] = useState([]);
-    const [languages, setLanguages] = useState([]);
+    const [experiences, setExperiences] = useState(profileData?.experiences || []);
+    const [education, setEducation] = useState(profileData?.education || []);
+    const [skills, setSkills] = useState(profileData?.skills || []);
+    const [languages, setLanguages] = useState(profileData?.languages || []);
+
+    // Update local state when context data changes (e.g. after refreshUser)
+    useEffect(() => {
+        if (user) {
+            setUserProfile({
+                full_name: user.full_name || '',
+                title: user.title || '',
+                summary: user.summary || '',
+                portfolio_url: user.portfolio_url || '',
+                linkedin_url: user.linkedin_url || '',
+                email: user.email || '',
+                avatar_image: user.avatar_image || 'default',
+                photo_cv: user.photo_cv || ''
+            });
+        }
+        if (profileData) {
+            setExperiences(profileData.experiences || []);
+            setEducation(profileData.education || []);
+            setSkills(profileData.skills || []);
+            setLanguages(profileData.languages || []);
+        }
+    }, [user, profileData]);
 
     // UI States
     const [showExpForm, setShowExpForm] = useState(false);
@@ -44,33 +69,6 @@ export default function ProfileEditor() {
     const [isImporting, setIsImporting] = useState(false);
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-    useEffect(() => {
-        if (token) fetchData();
-    }, [token]);
-
-    const fetchData = async () => {
-        try {
-            const headers = { Authorization: `Bearer ${token}` };
-
-            const [profileRes, expRes, eduRes, skillRes, langRes] = await Promise.all([
-                fetch(`${API_URL}/api/profile/me`, { headers }),
-                fetch(`${API_URL}/api/profile/experiences`, { headers }),
-                fetch(`${API_URL}/api/profile/education`, { headers }),
-                fetch(`${API_URL}/api/profile/skills`, { headers }),
-                fetch(`${API_URL}/api/profile/languages`, { headers })
-            ]);
-
-            if (profileRes.ok) setUserProfile(await profileRes.json());
-            if (expRes.ok) setExperiences(await expRes.json());
-            if (eduRes.ok) setEducation(await eduRes.json());
-            if (skillRes.ok) setSkills(await skillRes.json());
-            if (langRes.ok) setLanguages(await langRes.json());
-
-        } catch (error) {
-            console.error("Error fetching profile data", error);
-        }
-    };
 
     // --- Photo Upload Handler ---
     const handlePhotoUpload = async (e) => {
@@ -89,7 +87,8 @@ export default function ProfileEditor() {
             });
             if (res.ok) {
                 const data = await res.json();
-                setUserProfile(prev => ({ ...prev, avatar_image: data.path }));
+                setUserProfile(prev => ({ ...prev, photo_cv: data.path }));
+                await refreshUser();
                 addToast("Photo mise à jour !", 'success');
             } else {
                 const errData = await res.json().catch(() => ({}));
@@ -173,8 +172,8 @@ export default function ProfileEditor() {
 
             addToast("Tout le profil a été sauvegardé avec succès !", 'success');
 
-            // Refresh data to get real IDs from DB
-            await fetchData();
+            // Refresh data to get real IDs from DB and sync global context
+            await refreshUser();
 
         } catch (error) {
             console.error("Failed to save profile", error);
@@ -208,19 +207,7 @@ export default function ProfileEditor() {
             });
 
             if (res.ok) {
-                const savedExp = await res.json();
-
-                // Update local state intelligently
-                setExperiences(prev => {
-                    if (editingExp) {
-                        // Replace the edited item (whether it was temp or real)
-                        return prev.map(e => e.id === editingExp.id ? savedExp : e);
-                    } else {
-                        // Add new item
-                        return [...prev, savedExp];
-                    }
-                });
-
+                await refreshUser();
                 setShowExpForm(false);
                 setEditingExp(null);
                 addToast("Expérience enregistrée !", 'success');
@@ -243,8 +230,7 @@ export default function ProfileEditor() {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${token}` }
         });
-        // Update local state without fetch
-        setExperiences(prev => prev.filter(e => e.id !== id));
+        await refreshUser();
     };
 
     // --- Education Handlers ---
@@ -270,16 +256,7 @@ export default function ProfileEditor() {
             });
 
             if (res.ok) {
-                const savedEdu = await res.json();
-
-                setEducation(prev => {
-                    if (editingEdu) {
-                        return prev.map(e => e.id === editingEdu.id ? savedEdu : e);
-                    } else {
-                        return [...prev, savedEdu];
-                    }
-                });
-
+                await refreshUser();
                 setShowEduForm(false);
                 setEditingEdu(null);
                 addToast("Formation enregistrée !", 'success');
@@ -302,7 +279,7 @@ export default function ProfileEditor() {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${token}` }
         });
-        setEducation(prev => prev.filter(e => e.id !== id));
+        await refreshUser();
     };
 
     // --- Skills Handlers ---
@@ -318,9 +295,8 @@ export default function ProfileEditor() {
             });
 
             if (res.ok) {
-                const savedSkill = await res.json();
-                setSkills(prev => [...prev, savedSkill]);
                 setNewSkill('');
+                await refreshUser();
                 addToast("Compétence ajoutée !", 'success');
             }
         } catch (error) { console.error(error); }
@@ -337,7 +313,7 @@ export default function ProfileEditor() {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setSkills(prev => prev.filter(s => s.id !== id));
+            await refreshUser();
         } catch (error) { console.error(error); }
     };
 
@@ -354,9 +330,8 @@ export default function ProfileEditor() {
             });
 
             if (res.ok) {
-                const savedLang = await res.json();
-                setLanguages(prev => [...prev, savedLang]);
                 setNewLang({ name: '', level: 'Intermédiaire' });
+                await refreshUser();
                 addToast("Langue ajoutée !", 'success');
             }
         } catch (error) { console.error(error); }
@@ -373,7 +348,7 @@ export default function ProfileEditor() {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setLanguages(prev => prev.filter(l => l.id !== id));
+            await refreshUser();
         } catch (error) { console.error(error); }
     };
 
@@ -490,10 +465,10 @@ export default function ProfileEditor() {
                                 {/* Photo Upload */}
                                 <div className="flex items-center gap-4 mb-6">
                                     <div className="relative w-20 h-20 rounded-full bg-slate-100 overflow-hidden border border-slate-200 group cursor-pointer">
-                                        {userProfile.avatar_image && userProfile.avatar_image.startsWith('uploads/') ? (
+                                        {userProfile.photo_cv ? (
                                             <img
-                                                src={`${API_URL}/data/img/${userProfile.avatar_image}`}
-                                                alt="Profile"
+                                                src={`${API_URL}/data/img/${userProfile.photo_cv}`}
+                                                alt="Photo CV"
                                                 className="w-full h-full object-cover"
                                             />
                                         ) : (
@@ -507,8 +482,8 @@ export default function ProfileEditor() {
                                         </label>
                                     </div>
                                     <div>
-                                        <p className="text-xs font-bold text-slate-500 uppercase">Photo de profil</p>
-                                        <p className="text-xs text-slate-400">Cliquez pour modifier</p>
+                                        <p className="text-xs font-bold text-slate-500 uppercase">Photo CV</p>
+                                        <p className="text-xs text-slate-400">Sera affichée sur votre CV</p>
                                     </div>
                                 </div>
 
@@ -650,7 +625,7 @@ export default function ProfileEditor() {
                                                 </button>
                                             </div>
                                         </div>
-                                        <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-line">{exp.description}</p>
+                                        <FormattedText text={exp.description} />
                                     </div>
                                 ))}
                                 {experiences.length === 0 && !showExpForm && (
@@ -700,7 +675,7 @@ export default function ProfileEditor() {
                                                 </button>
                                             </div>
                                         </div>
-                                        {edu.description && <p className="text-slate-600 dark:text-slate-300 text-sm mt-2">{edu.description}</p>}
+                                        {edu.description && <div className="mt-2"><FormattedText text={edu.description} /></div>}
                                     </div>
                                 ))}
                                 {education.length === 0 && !showEduForm && (

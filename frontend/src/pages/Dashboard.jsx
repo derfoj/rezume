@@ -26,9 +26,11 @@ const AVATARS = [
 ];
 
 export default function Dashboard() {
-    const { token, logout, refreshUser } = useAuth();
+    const { token, user: contextUser, logout, refreshUser } = useAuth();
     const navigate = useNavigate();
-    const [user, setUser] = useState({
+    
+    // Initialize local state from context user
+    const [user, setUser] = useState(contextUser || {
         full_name: '',
         email: '',
         avatar_image: 'default',
@@ -40,30 +42,26 @@ export default function Dashboard() {
         llm_provider: 'openai',
         llm_model: 'gpt-4o-mini',
         selected_template: 'classic'
-
     });
-    const [loading, setLoading] = useState(true);
+
+    // Update local state when context user changes
+    useEffect(() => {
+        if (contextUser) {
+            setUser(contextUser);
+            setLoading(false);
+        } else {
+             // If no context user yet, we might be loading or not logged in.
+             // AuthContext handles the initial fetch. 
+             // We can just wait a bit or let the loading skeleton stay until context updates.
+             // If context decides we are not logged in, it redirects or stays null.
+        }
+    }, [contextUser]);
+
+    const [loading, setLoading] = useState(!contextUser);
     const [showAvatarSelector, setShowAvatarSelector] = useState(false);
     const [showSettingsModal, setShowSettingsModal] = useState(false);
     const { addToast } = useToast();
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const res = await fetch(`${API_URL}/api/profile/me`, {
-                    credentials: 'include'
-                });
-                if (res.ok) setUser(await res.json());
-            } catch (error) {
-                console.error("Error fetching user", error);
-            } finally {
-                // Determine synthetic loading time for smoother skeletal transition
-                setTimeout(() => setLoading(false), 800);
-            }
-        };
-        fetchUser();
-    }, [API_URL]); // Removed token dependency
 
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [newTitle, setNewTitle] = useState('');

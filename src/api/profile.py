@@ -134,6 +134,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: str | None = None
     avatar_image: str | None = "default"
+    photo_cv: str | None = None
     title: str | None = "Étudiant"
     summary: str | None = None
     portfolio_url: str | None = None
@@ -150,6 +151,7 @@ class UserResponse(BaseModel):
 class UserUpdate(BaseModel):
     full_name: str | None = None
     avatar_image: str | None = None
+    photo_cv: str | None = None
     title: str | None = None
     summary: str | None = None
     portfolio_url: str | None = None
@@ -247,7 +249,7 @@ async def upload_photo(
         # We store the relative path or a special marker to indicate it's an upload
         # Let's store: "uploads/filename"
         relative_path = f"uploads/{filename}"
-        current_user.avatar_image = relative_path
+        current_user.photo_cv = relative_path
         db.commit()
         
         return {"message": "Photo uploaded successfully", "path": relative_path}
@@ -272,6 +274,8 @@ def update_me(
         current_user.full_name = user_update.full_name
     if user_update.avatar_image is not None:
         current_user.avatar_image = user_update.avatar_image
+    if user_update.photo_cv is not None:
+        current_user.photo_cv = user_update.photo_cv
     if user_update.title is not None:
         current_user.title = user_update.title
     if user_update.summary is not None:

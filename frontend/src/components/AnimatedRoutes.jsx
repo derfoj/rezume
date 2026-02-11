@@ -8,6 +8,7 @@ import ProfileEditor from '../pages/ProfileEditor';
 import Explore from '../pages/Explore';
 import CVBuilder from '../pages/CVBuilder';
 import PageTransition from './PageTransition';
+import NotFound from '../pages/NotFound';
 import { useAuth } from '../context/AuthContext';
 
 // Protected Route Wrapper
@@ -33,7 +34,13 @@ const AnimatedRoutes = () => {
                     </ProtectedRoute>
                 } />
 
+                {/* Both /editor and /profile point to the Profile Editor */}
                 <Route path="/editor" element={
+                    <ProtectedRoute>
+                        <PageTransition><ProfileEditor /></PageTransition>
+                    </ProtectedRoute>
+                } />
+                <Route path="/profile" element={
                     <ProtectedRoute>
                         <PageTransition><ProfileEditor /></PageTransition>
                     </ProtectedRoute>
@@ -51,8 +58,8 @@ const AnimatedRoutes = () => {
                     </ProtectedRoute>
                 } />
 
-                {/* Fallback */}
-                <Route path="*" element={<Navigate to="/" />} />
+                {/* Fallback 404 */}
+                <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
             </Routes>
         </AnimatePresence>
     );

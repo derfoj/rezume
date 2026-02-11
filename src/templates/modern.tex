@@ -1,80 +1,130 @@
-\documentclass[11pt,a4paper]{article}
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage[french]{babel}
-\usepackage[margin=2cm]{geometry}
-\usepackage{xcolor}
-\usepackage{titlesec}
-\usepackage{enumitem}
-\usepackage{fontawesome5}
-\usepackage{hyperref}
+% -------------------------
+% Resume in Latex - Modern Template
+% Optimized for reZume
+% -------------------------
 
-% --- Couleurs ---
-\definecolor{primary}{RGB}{41, 128, 185} % Un bleu moderne
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\usepackage{xcolor}
+\usepackage{fontawesome5}
+\usepackage{graphicx}
+
+\input{glyphtounicode}
+
+% --- Colors ---
+\definecolor{primary}{RGB}{41, 128, 185}
 \definecolor{darkgrey}{RGB}{50, 50, 50}
 
-% --- Polices et Styles ---
-\renewcommand{\familydefault}{\sfdefault} % Sans-serif pour un look moderne
+\renewcommand{\familydefault}{\sfdefault}
 
-% Titres de section
-\titleformat{\section}
-{\Large\bfseries\color{primary}\uppercase}
-{}{0em}{}[\titlerule]
-\titlespacing{\section}{0pt}{12pt}{8pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
 
-% Titres de sous-section (Postes)
-\titleformat{\subsection}
-{\large\bfseries\color{darkgrey}}
-{}{0em}{}
+% Adjust margins
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-1in}
+\addtolength{\textheight}{1.0in}
 
-% --- Commandes perso ---
-\newcommand{\entry}[4]{
-  \noindent\textbf{#1} \hfill {\color{gray}\small #2} \\
-  {\color{primary}\textit{#3}} \par
-  \vspace{0.2em}
-  #4
-  \vspace{0.8em}
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Section formatting
+\titleformat{\section}{
+  \vspace{-5pt}\bfseries\color{primary}\large\uppercase
+}{}{0em}{}[\color{primary}\titlerule \vspace{-5pt}]
+
+\pdfgentounicode=1
+
+% --- CUSTOM COMMANDS ---
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
 }
 
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+% -------------------- DOCUMENT START --------------------
 \begin{document}
 
-% --- En-tête ---
-\begin{center}
-    {\Huge\bfseries\color{primary} {{name}} } \\ \vspace{0.2cm}
-    {\Large\color{darkgrey} {{title}} } \\ \vspace{0.4cm}
-    
-    \small
-    \faEnvelope \space {{email}} \quad | \quad
-    \faLinkedin \space \href{{{linkedin_url}}}{LinkedIn} \quad | \quad
-    \faGlobe \space \href{{{portfolio_url}}}{Portfolio}
-\end{center}
+% --- HEADING ---
+\begin{minipage}[c]{0.25\textwidth}
+    \def\photopath{{{photo_path}}}
+    \ifx\photopath\empty
+    \else
+      \includegraphics[width=3cm, keepaspectratio]{{{photo_path}}}
+    \fi
+\end{minipage}
+\hfill
+\begin{minipage}[c]{0.70\textwidth}
+    \begin{center}
+        {\Huge\bfseries\color{primary} {{name}} } \\ \vspace{8pt}
+        {\Large\color{darkgrey} {{title}} } \\ \vspace{8pt}
+        
+        \small
+        \faEnvelope \space {{email}} \quad | \quad
+        \faLinkedin \space \href{{{linkedin_url}}}{LinkedIn} \quad | \quad
+        \faGlobe \space \href{{{portfolio_url}}}{Portfolio}
+    \end{center}
+\end{minipage}
 
-\vspace{0.5cm}
+\vspace{5pt}
 
-% --- Résumé ---
+% --- SUMMARY ---
 \section*{Profil}
 {{summary}}
 
-% --- Expériences ---
+% --- EXPERIENCE ---
 \section*{Expériences Professionnelles}
-
-% Exemple de structure que l'IA doit générer pour chaque expérience
-% \entry{Titre du poste}{Date début - Date fin}{Entreprise, Lieu}{
-%  \begin{itemize}[leftmargin=*, noitemsep]
-%    \item Tâche 1 réalisée...
-%    \item Tâche 2 réalisée...
-%  \end{itemize}
-% }
-
+\resumeSubHeadingListStart
 {{experiences_content}}
+\resumeSubHeadingListEnd
 
-% --- Formation ---
+% --- FORMATION ---
 \section*{Formation}
+\resumeSubHeadingListStart
 {{education_content}}
+\resumeSubHeadingListEnd
 
-% --- Compétences ---
+% --- COMPÉTENCES ---
 \section*{Compétences}
-\begin{itemize}[leftmargin=*, label=\faCheckCircle, itemsep=2pt]
+\begin{itemize}[leftmargin=0.15in, label=\faCheckCircle]
     \item \textbf{Expertise Technique:} {{hard_skills}}
     \item \textbf{Soft Skills:} {{soft_skills}}
     \item \textbf{Langues:} {{languages}}

@@ -27,13 +27,24 @@ class ParserAgent:
         # We define the structured extraction program
         self.llm = self._get_llama_index_llm()
         
-        prompt_template_str = """
-        You are an expert recruitment analyst. Extract structured information from the following job offer text.
-        Ensure the output strictly follows the schema.
-        
-        OFFER TEXT:
-        {offer_text}
-        """
+        # Load prompt from YAML if path provided
+        prompt_template_str = None
+        if prompt_path:
+            try:
+                config = load_yaml(prompt_path)
+                prompt_template_str = config.get('template')
+            except Exception as e:
+                logger.warning(f"Failed to load prompt from {prompt_path}: {e}")
+
+        # Fallback if YAML load failed or key missing
+        if not prompt_template_str:
+            prompt_template_str = """
+            You are an expert recruitment analyst. Extract structured information from the following job offer text.
+            Ensure the output strictly follows the schema.
+            
+            OFFER TEXT:
+            {offer_text}
+            """
         
         self.program = LLMTextCompletionProgram.from_defaults(
             output_cls=JobOfferData,

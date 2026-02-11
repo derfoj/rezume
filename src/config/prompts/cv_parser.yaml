@@ -8,7 +8,7 @@ template: |
 
   RÈGLES D'EXTRACTION :
   1. Retourne UNIQUEMENT un objet JSON valide. Pas de texte avant ou après.
-  2. Si une information est manquante, utilise une chaîne vide "" ou une liste vide [].
+  2. Si une information est manquante (comme le nom de l'entreprise ou une date), utilise une chaîne vide "" ou une liste vide []. NE METS JAMAIS DE PLACEHOLDERS génériques comme "[Nom de l'entreprise]", "[Date]", "Nom de l'entreprise", "Date". Laisse vide si l'info n'y est pas.
   3. Les dates doivent être au format "Mois Année" (ex: "Janvier 2022") ou juste "Année".
   4. Pour les compétences, sépare les Hard Skills (techniques) des Soft Skills (comportementales).
 
