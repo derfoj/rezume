@@ -8,7 +8,7 @@ pyyaml
 openai>=1.0.0
 anthropic
 groq
-google-generativeai
+google-genai
 tiktoken
 
 # Vector Store
@@ -56,6 +56,7 @@ Jinja2
 rich
 colorama
 loguru
+filetype
 
 # Tests
 pytest

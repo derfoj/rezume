@@ -127,22 +127,18 @@ def _rank_skills_by_relevance(user_skills: list, offer_text: str, top_n: int = 1
         return user_skills[:top_n]
 
     try:
-        from src.core.vector_store import get_model
+        from src.core.vector_store import get_embedding, get_embeddings
         import numpy as np
         
-        model = get_model()
-        
         # Encode offer text (query)
-        # Using "query: " prefix for E5 model
-        offer_embedding = model.encode([f"query: {offer_text}"])
-        offer_embedding = np.array(offer_embedding, dtype=np.float32)
+        offer_embedding_list = get_embedding(f"query: {offer_text}")
+        offer_embedding = np.array(offer_embedding_list, dtype=np.float32)
         norm_offer = np.linalg.norm(offer_embedding)
         
         # Encode skills (passages)
-        # Using "passage: " prefix for E5 model
         skill_texts = [f"passage: {skill}" for skill in user_skills]
-        skill_embeddings = model.encode(skill_texts)
-        skill_embeddings = np.array(skill_embeddings, dtype=np.float32)
+        skill_embeddings_list = get_embeddings(skill_texts)
+        skill_embeddings = np.array(skill_embeddings_list, dtype=np.float32)
         
         # Calculate cosine similarity
         scores = []
@@ -151,7 +147,7 @@ def _rank_skills_by_relevance(user_skills: list, offer_text: str, top_n: int = 1
             if norm_offer == 0 or norm_skill == 0:
                 score = 0
             else:
-                score = np.dot(offer_embedding[0], skill_emb) / (norm_offer * norm_skill)
+                score = np.dot(offer_embedding, skill_emb) / (norm_offer * norm_skill)
             scores.append((user_skills[i], score))
             
         # Sort by score descending
@@ -159,6 +155,13 @@ def _rank_skills_by_relevance(user_skills: list, offer_text: str, top_n: int = 1
         
         # Return top N skill names
         return [s[0] for s in ranked_skills[:top_n]]
+        
+    except ImportError:
+        logger.warning("Could not import vector_store functions. Skipping skill ranking.")
+        return user_skills[:top_n]
+    except Exception as e:
+        logger.warning(f"Skill ranking failed: {e}. Returning original order.")
+        return user_skills[:top_n]
         
     except Exception as e:
         logger.warning(f"Skill ranking failed: {e}. Returning original order.")
