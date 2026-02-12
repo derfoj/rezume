@@ -3,7 +3,7 @@ import numpy as np
 import os
 import json
 from typing import List, Dict, Any
-from sentence_transformers import SentenceTransformer
+from openai import OpenAI
 from src.config.constants import EMBEDDINGS_DIR
 from sqlalchemy.orm import Session
 from src.core.knowledge_base import get_profile_from_db
@@ -12,28 +12,39 @@ import logging
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Use a consistent model for generating embeddings
-MODEL_NAME = "intfloat/multilingual-e5-small"
-# Load model globally to avoid reloading on every call (caching strategy)
-_model_instance = None
+# Use OpenAI's efficient embedding model
+MODEL_NAME = "text-embedding-3-small"
 
-def get_model():
-    global _model_instance
-    if _model_instance is None:
-        logger.info("Initializing SentenceTransformer model with low_cpu_mem_usage=False...")
-        # Force CPU usage by hiding CUDA devices
-        os.environ["CUDA_VISIBLE_DEVICES"] = ""
-        # Explicitly setting device='cpu' and disabling device_map to avoid 'meta tensor' errors
-        _model_instance = SentenceTransformer(
-            MODEL_NAME, 
-            device="cpu",
-            model_kwargs={"low_cpu_mem_usage": False, "device_map": None}
-        )
-    return _model_instance
+def get_embedding(text: str) -> List[float]:
+    """
+    Generates an embedding for a given text using OpenAI API.
+    """
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    text = text.replace("\n", " ")  # Normalize newlines
+    try:
+        return client.embeddings.create(input=[text], model=MODEL_NAME).data[0].embedding
+    except Exception as e:
+        logger.error(f"Error generating embedding with OpenAI: {e}")
+        # Return a zero vector of appropriate size (1536 for text-embedding-3-small) as fallback
+        return [0.0] * 1536
+
+def get_embeddings(texts: List[str]) -> List[List[float]]:
+    """
+    Generates embeddings for a list of texts using OpenAI API.
+    """
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    # Normalize newlines
+    texts = [t.replace("\n", " ") for t in texts]
+    try:
+        response = client.embeddings.create(input=texts, model=MODEL_NAME)
+        return [data.embedding for data in response.data]
+    except Exception as e:
+        logger.error(f"Error generating embeddings with OpenAI: {e}")
+        return [[0.0] * 1536 for _ in texts]
 
 def build_vector_store(documents: List[Dict[str, Any]], index_name: str = "kb_index"):
     """
-    Builds and saves a FAISS index using cosine similarity (Inner Product).
+    Builds and saves a FAISS index using cosine similarity.
     
     Args:
         documents: List of dicts. Each dict MUST have a 'content' key (text to embed).
@@ -49,16 +60,15 @@ def build_vector_store(documents: List[Dict[str, Any]], index_name: str = "kb_in
     index_path = os.path.join(EMBEDDINGS_DIR, f"{index_name}.faiss")
     data_path = os.path.join(EMBEDDINGS_DIR, f"{index_name}.json")
 
-    # Extract text content and prepend "passage: " for E5 models
-    texts = [f"passage: {doc.get('content', '')}" for doc in documents]
+    # Extract text content
+    texts = [doc.get('content', '') for doc in documents]
     
-    # Generate embeddings
-    model = get_model()
-    logger.info(f"Generating embeddings for {len(texts)} documents ({index_name})...")
-    embeddings = model.encode(texts, convert_to_tensor=False, show_progress_bar=False)
-    embeddings = np.array(embeddings, dtype=np.float32)
+    # Generate embeddings via API
+    logger.info(f"Generating OpenAI embeddings for {len(texts)} documents ({index_name})...")
+    embeddings_list = get_embeddings(texts)
+    embeddings = np.array(embeddings_list, dtype=np.float32)
     
-    # Normalize for Cosine Similarity
+    # Normalize for Cosine Similarity (OpenAI embeddings are usually normalized, but good practice)
     faiss.normalize_L2(embeddings)
 
     # Build Index
@@ -68,8 +78,7 @@ def build_vector_store(documents: List[Dict[str, Any]], index_name: str = "kb_in
     # Save Index
     faiss.write_index(index, index_path)
     
-    # Save Metadata (original docs + implicit order)
-    # We don't save the raw vectors in JSON to save space, but we could if needed.
+    # Save Metadata
     with open(data_path, 'w', encoding='utf-8') as f:
         json.dump(documents, f, ensure_ascii=False, indent=4)
         
@@ -116,8 +125,6 @@ def recalculate_user_embeddings(user_id: int, db: Session):
             })
 
         # 3. Skills (Grouped or individual)
-        # Embedding individual skills might be noisy, but good for keyword matching.
-        # Let's chunk them a bit or just list them.
         if profile.skills:
             content = f"Technical Skills: {', '.join(profile.skills)}"
             documents.append({
@@ -148,8 +155,6 @@ def recalculate_user_embeddings(user_id: int, db: Session):
         
     except Exception as e:
         logger.error(f"Failed to recalculate embeddings for User {user_id}: {e}")
-        # Build an empty index or handle error gracefully?
-        # For now, we just log it.
 
 def search_vector_store(
     query_text: str, 
@@ -167,18 +172,20 @@ def search_vector_store(
         return []
 
     # Load resources
-    index = faiss.read_index(index_path)
-    with open(data_path, 'r', encoding='utf-8') as f:
-        documents = json.load(f)
+    try:
+        index = faiss.read_index(index_path)
+        with open(data_path, 'r', encoding='utf-8') as f:
+            documents = json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading index/data for {index_name}: {e}")
+        return []
 
-    # Encode Query with "query: " prefix for E5 models
-    model = get_model()
-    query_embedding = model.encode([f"query: {query_text}"])
-    query_embedding = np.array(query_embedding, dtype=np.float32)
+    # Generate Query Embedding
+    query_embedding_list = get_embedding(query_text)
+    query_embedding = np.array([query_embedding_list], dtype=np.float32)
     faiss.normalize_L2(query_embedding)
 
     # Search
-    # Check if we have enough documents
     k = min(top_n, index.ntotal)
     if k == 0:
         return []
@@ -191,11 +198,7 @@ def search_vector_store(
         if idx != -1:
             doc = documents[idx].copy() # Copy to avoid mutating original
             doc['match_score'] = float(distances[0][i])
-            # Reconstruct embedding from index for diversification logic
-            try:
-                doc['embedding'] = index.reconstruct(int(idx)).tolist()
-            except Exception as e:
-                logger.warning(f"Could not reconstruct embedding for index {idx}: {e}")
+            # Reconstruct embedding not strictly needed for basic search, avoiding complexity
             results.append(doc)
             
     return results

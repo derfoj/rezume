@@ -9,11 +9,11 @@ openai>=1.0.0
 anthropic
 groq
 google-generativeai
-transformers>=4.40.0
-sentence-transformers
-sentencepiece
-torch>=2.0.0
 tiktoken
+
+# Vector Store
+faiss-cpu
+numpy
 
 # Text Processing
 nltk
@@ -23,7 +23,6 @@ thefuzz[speedup]
 
 # Data Handling
 pandas
-numpy
 
 # Backend / API
 fastapi
@@ -41,6 +40,7 @@ python-docx
 pypdf
 llama-parse
 llama-index-core
+llama-index-llms-openai
 
 # Orchestration / Agents
 langgraph
