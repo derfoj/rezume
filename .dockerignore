@@ -1,0 +1,28 @@
+# Ignore directories
+.rezume/
+.venv/
+.vscode/
+data/
+outputs/
+rezume_miktex/
+node_modules/
+frontend/node_modules/
+.pytest_cache/
+.git/
+.idea/
+
+# Ignore files
+.env
+*.py[cod]
+*.db
+*.sqlite3
+*.json
+*.faiss
+erreur.txt
+ev.txt
+resumer.txt
+presentation.txt
+GEMINI.md
+.web
+Dockerfile
+.dockerignore

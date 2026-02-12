@@ -48,3 +48,5 @@ presentation.txt
 *.faiss
 #node modules
 node_modules/
+#dockerfile 
+Dockerfile

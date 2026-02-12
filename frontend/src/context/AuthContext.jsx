@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
     });
 
     // Use relative path by default to leverage Vite proxy in dev and same-origin in prod
-    const API_URL = import.meta.env.VITE_API_URL || '';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
     // --- Global Fetch Interceptor for 401 & 500 Handling ---
     const originalFetchRef = useRef(window.fetch);
