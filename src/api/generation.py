@@ -16,6 +16,8 @@ from src.models.user import User
 from src.config.constants import TEMPLATES_DIR
 from src.core.orchestration import _rank_skills_by_relevance # NEW IMPORT
 import json
+import urllib.parse
+from pathlib import Path
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -76,6 +78,33 @@ async def generate_cv_endpoint(
     Includes an auto-correction loop to ensure compliance (max 2 retries).
     """
     try:
+        # --- CACHE CHECK ---
+        # If generation_id is provided, check if file exists to avoid re-generation
+        if request.generation_id:
+            logger.info(f"Checking for cached CV with ID: {request.generation_id}")
+            # Construct path: outputs/generated_cvs/{id}/{id}.pdf
+            # We assume generation_id is the folder name (e.g. "rezume_llm_uuid")
+            base_dir = Path(__file__).resolve().parent.parent.parent / "outputs" / "generated_cvs"
+            cached_pdf_path = base_dir / request.generation_id / f"{request.generation_id}.pdf"
+            
+            if cached_pdf_path.exists():
+                logger.info("Cached CV found. Serving existing file.")
+                return FileResponse(
+                    path=cached_pdf_path,
+                    filename="reZume_CV_Generated.pdf",
+                    media_type='application/pdf',
+                    headers={
+                        "Content-Disposition": "attachment; filename=reZume_CV_Generated.pdf",
+                        "X-Generation-ID": request.generation_id,
+                        # We might need to store validation result separately to return it here,
+                        # but for download purpose, usually we assume it was validated on preview.
+                        # If needed, we could look for a sidecar json file.
+                        "X-CV-Validation-Report": urllib.parse.quote(json.dumps({"valid": True, "cached": True}))
+                    }
+                )
+            else:
+                logger.warning(f"Cached CV not found at {cached_pdf_path}. Proceeding to generation.")
+
         # 1. Load and validate the user profile
         user_profile = get_profile_from_db(db, user_id=current_user.id)
         
@@ -139,6 +168,11 @@ async def generate_cv_endpoint(
         # Encode validation result for header
         validation_header = urllib.parse.quote(json.dumps(validation_result))
 
+        # Extract generation ID from path
+        # pdf_path is something like .../outputs/generated_cvs/rezume_llm_123/rezume_llm_123.pdf
+        # We want "rezume_llm_123"
+        generation_id = Path(pdf_path).parent.name
+
         # 4. Return the generated file for download with validation headers
         return FileResponse(
             path=pdf_path,
@@ -146,7 +180,8 @@ async def generate_cv_endpoint(
             media_type='application/pdf',
             headers={
                 "Content-Disposition": "attachment; filename=reZume_CV_Generated.pdf",
-                "X-CV-Validation-Report": validation_header
+                "X-CV-Validation-Report": validation_header,
+                "X-Generation-ID": generation_id
             }
         )
     except (FileNotFoundError, ValueError) as e:

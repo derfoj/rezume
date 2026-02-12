@@ -1,6 +1,6 @@
 # src/core/api_models.py
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 class JobOfferRequest(BaseModel):
     """Request model for the analysis endpoint."""
@@ -17,4 +17,5 @@ class AnalysisResponse(BaseModel):
 class CVGenerationRequest(BaseModel):
     """Request model for the CV generation endpoint."""
     experiences: List[Dict[str, Any]]
-    job_offer_text: str = None
+    job_offer_text: Optional[str] = None
+    generation_id: Optional[str] = None

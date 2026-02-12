@@ -179,6 +179,7 @@ export default function CVBuilderApp() {
   const [editableExperiences, setEditableExperiences] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
   const [backendStatus, setBackendStatus] = useState('offline');
+  const [generationId, setGenerationId] = useState(null); // NEW: Cache ID for PDF
 
   // Stats from context
   const [stats, setStats] = useState({ xp: 0, skills: 0 });
@@ -242,6 +243,7 @@ export default function CVBuilderApp() {
     setEditingIndex(null);
     setScore(0);
     setLogs([]);
+    setGenerationId(null); // Reset cache
 
     addLog("Initializing Generation sequence...", 'info');
     addLog("Sending input stream to Python Backend...", 'process');
@@ -290,7 +292,8 @@ export default function CVBuilderApp() {
         },
         body: JSON.stringify({ 
             experiences: editableExperiences, 
-            job_offer_text: input 
+            job_offer_text: input,
+            generation_id: generationId // Try to reuse existing if user clicks preview again? Maybe not needed for preview but good consistency
         }),
       });
 
@@ -301,7 +304,7 @@ export default function CVBuilderApp() {
       if (validationHeader) {
         try {
           const report = JSON.parse(decodeURIComponent(validationHeader));
-          if (!report.valid) {
+          if (!report.valid && !report.cached) { // Ignore warnings if cached
             report.warnings.forEach(w => addToast(w, 'warning', 10000)); // Long duration for warnings
             addLog("Validation Warnings Detected!", 'error');
           } else {
@@ -310,6 +313,13 @@ export default function CVBuilderApp() {
         } catch (e) {
           console.error("Failed to parse validation header", e);
         }
+      }
+      
+      // Capture Generation ID for caching
+      const genId = response.headers.get('X-Generation-ID');
+      if (genId) {
+          setGenerationId(genId);
+          console.log("Cached Generation ID:", genId);
       }
 
       const blob = await response.blob();
@@ -343,7 +353,8 @@ export default function CVBuilderApp() {
         },
         body: JSON.stringify({ 
             experiences: editableExperiences, 
-            job_offer_text: input 
+            job_offer_text: input,
+            generation_id: generationId // Use cached ID if available
         }),
       });
 

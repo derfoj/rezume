@@ -114,7 +114,7 @@ class LlamaExtractorAgent:
         """
         try:
             output: CVData = self.program(text=text)
-            return output.dict()
+            return output.model_dump()
         except Exception as e:
             logger.error(f"Extraction failed: {e}")
             raise ValueError(f"Failed to extract structured data: {str(e)}")

@@ -59,7 +59,7 @@ class OrchestratorAgent:
         self._ensure_vector_store()
 
         query = f"Skills: {', '.join(parsed.get('skills', []))}. Missions: {' '.join(parsed.get('missions', []))}"
-        selected = search_vector_store(query, self.index_name)
+        selected = search_vector_store(query, self.index_name) or []
 
         print(f"→ {len(selected)} experiences selected")
 

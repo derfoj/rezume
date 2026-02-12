@@ -185,6 +185,22 @@ def search_vector_store(
     query_embedding = np.array([query_embedding_list], dtype=np.float32)
     faiss.normalize_L2(query_embedding)
 
+    # Check for dimension mismatch (e.g. old index vs new model)
+    if index.d != query_embedding.shape[1]:
+        logger.warning(
+            f"Dimension mismatch detected! Index: {index.d}, Query: {query_embedding.shape[1]}. "
+            f"Deleting stale index '{index_name}' to force rebuild on next request."
+        )
+        try:
+            if os.path.exists(index_path):
+                os.remove(index_path)
+            if os.path.exists(data_path):
+                os.remove(data_path)
+        except OSError as e:
+            logger.error(f"Failed to delete stale index files: {e}")
+        
+        return []
+
     # Search
     k = min(top_n, index.ntotal)
     if k == 0:

@@ -76,7 +76,7 @@ class ParserAgent:
         try:
             logger.info("Starting structured extraction for job offer.")
             output: JobOfferData = self.program(offer_text=offer_text)
-            return output.dict()
+            return output.model_dump()
         except Exception as e:
             logger.error(f"Structured extraction failed: {e}. Falling back to rule-based method.")
             return self._rule_based_extract(offer_text)
