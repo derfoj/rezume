@@ -260,17 +260,44 @@ class GeneratorAgent:
             f.write(generated_latex_code)
 
         cmd = ["pdflatex", "-interaction=nonstopmode", f"-output-directory={str(session_dir)}", str(tex_path)]
-        try:
-            # We run compilation twice.
-            subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
-            subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
-        except FileNotFoundError:
-            raise RuntimeError("pdflatex introuvable. Assurez-vous qu'une distribution LaTeX est installée.")
         
-        if not pdf_path.exists():
+        compilation_success = False
+        try:
+            # Try local compilation first
+            subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+            subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+            if pdf_path.exists():
+                compilation_success = True
+        except FileNotFoundError:
+            print("⚠️ pdflatex non trouvé localement.")
+
+        # Fallback to LatexOnline API if local compilation failed
+        if not compilation_success:
+            print("🌍 Tentative de compilation via l'API LatexOnline...")
+            try:
+                import requests
+                # LatexOnline expects the latex code in the 'text' parameter or as raw body
+                # Using the /compile endpoint with 'text' parameter is standard
+                response = requests.post(
+                    "http://latexonline.cc/compile",
+                    params={"text": generated_latex_code},
+                    timeout=30 
+                )
+                
+                if response.status_code == 200:
+                    with open(pdf_path, "wb") as f:
+                        f.write(response.content)
+                    print("✅ Compilation réussie via LatexOnline.")
+                    compilation_success = True
+                else:
+                    print(f"❌ Erreur API LatexOnline: {response.status_code}")
+            except Exception as e:
+                print(f"❌ Exception lors de l'appel API LatexOnline: {e}")
+
+        if not compilation_success:
             log_file = tex_path.with_suffix(".log")
             log_content = log_file.read_text(encoding='utf-8', errors='ignore') if log_file.exists() else "Fichier log non trouvé."
-            print(f"❌ Erreur de compilation LaTeX. Log:\n{log_content[-1500:]}")
+            print(f"❌ Échec total de la compilation (Local & API). Log partiel:\n{log_content[-1500:]}")
             raise RuntimeError("La compilation LaTeX a échoué (aucun PDF produit).")
         
         return str(pdf_path), str(tex_path)
