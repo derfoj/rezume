@@ -41,6 +41,7 @@ pypdf
 llama-parse
 llama-index-core
 llama-index-llms-openai
+llama-index-llms-groq
 
 # Orchestration / Agents
 langgraph
