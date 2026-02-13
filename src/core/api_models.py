@@ -1,13 +1,15 @@
 # src/core/api_models.py
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Dict, Any, Optional
 
 class JobOfferRequest(BaseModel):
     """Request model for the analysis endpoint."""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     raw_text: str
 
 class AnalysisResponse(BaseModel):
     """Response model for the analysis endpoint."""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     score: int
     summary: str
     skills: List[str]
@@ -16,6 +18,7 @@ class AnalysisResponse(BaseModel):
 
 class CVGenerationRequest(BaseModel):
     """Request model for the CV generation endpoint."""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     experiences: List[Dict[str, Any]]
     job_offer_text: Optional[str] = None
     generation_id: Optional[str] = None
