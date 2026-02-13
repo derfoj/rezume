@@ -5,6 +5,14 @@ import os
 import logging
 from dotenv import load_dotenv
 
+# --- PYDANTIC DIAGNOSTIC ---
+try:
+    import pydantic
+    print(f"DEBUG: Pydantic version detected: {pydantic.VERSION}")
+except Exception as e:
+    print(f"DEBUG: Failed to detect Pydantic version: {e}")
+# ---------------------------
+
 # Load environment variables from .env file
 load_dotenv()
 

@@ -42,8 +42,9 @@ def initialize_optimizer_agent():
         logger.error(f"Failed to initialize OptimizerAgent: {e}")
         return None
 
-parser_agent = initialize_parser_agent()
+# Optimizer first, then Parser (LlamaIndex)
 optimizer_agent = initialize_optimizer_agent()
+parser_agent = initialize_parser_agent()
 
 def _calculate_fuzzy_keyword_score(required_skills: list, user_skills: list) -> float:
     """
