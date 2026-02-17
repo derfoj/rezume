@@ -78,7 +78,9 @@ def build_vector_store(documents: List[Dict[str, Any]], index_name: str = "kb_in
     # Save Index
     faiss.write_index(index, index_path)
     
-    # Save Metadata
+    # Save Metadata with embeddings
+    for i, doc in enumerate(documents):
+        doc['embedding'] = embeddings_list[i] # Add embedding to each document
     with open(data_path, 'w', encoding='utf-8') as f:
         json.dump(documents, f, ensure_ascii=False, indent=4)
         

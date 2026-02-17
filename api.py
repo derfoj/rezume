@@ -31,10 +31,17 @@ from src.core.orchestration import parser_agent
 from src.core.error_handlers import global_exception_handler, database_exception_handler
 
 # --- Database Initialization ---
-# For development, we create tables on startup. In prod, use Alembic.
-Base.metadata.create_all(bind=engine)
+logger.info("Connecting to database and creating tables...")
+try:
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database initialized successfully.")
+except Exception as e:
+    logger.error(f"Database initialization failed: {e}")
+    # In some environments, we might want to continue or exit
+    # For now, we continue to let FastAPI handle its own errors
 
 # --- FastAPI App Initialization ---
+logger.info("Starting FastAPI application...")
 app = FastAPI(title="reZume API")
 
 # --- Static Files ---
