@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic.v1 import BaseModel, Field
 import os
 import logging
 from llama_index.core.program import LLMTextCompletionProgram
@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 # (e.g., with descriptions in Field to guide the LLM).
 
 class ExperienceExtraction(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    class Config:
+        arbitrary_types_allowed = True
     title: str = Field(description="Job title")
     company: Optional[str] = Field(description="Company name. Leave empty if personal project or freelance.")
     location: Optional[str] = Field(description="City/Country of the job. Leave empty if remote or not found.")
@@ -22,7 +23,8 @@ class ExperienceExtraction(BaseModel):
     description: Optional[str] = Field(description="Detailed description of responsibilities and achievements. Leave empty if none provided.")
 
 class EducationExtraction(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    class Config:
+        arbitrary_types_allowed = True
     institution: str = Field(description="Name of the university or school")
     degree: Optional[str] = Field(description="Degree obtained (e.g., 'Master in Computer Science'). Leave empty if not specified.")
     start_date: Optional[str] = Field(description="Start date")
@@ -31,12 +33,14 @@ class EducationExtraction(BaseModel):
     description: Optional[str] = Field(description="Additional details about the program")
 
 class LanguageExtraction(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    class Config:
+        arbitrary_types_allowed = True
     name: str = Field(description="Language name (e.g., 'English', 'French')")
     level: Optional[str] = Field(description="Proficiency level (e.g., 'Native', 'Fluent', 'B2'). Leave empty if not found.")
 
 class CVData(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    class Config:
+        arbitrary_types_allowed = True
     full_name: str = Field(description="Full name of the candidate")
     title: Optional[str] = Field(description="Current professional title")
     summary: Optional[str] = Field(description="Short professional summary or profile description")

@@ -3,7 +3,7 @@ import re
 import logging
 import os
 from typing import List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic.v1 import BaseModel, Field
 from src.core.utils import load_yaml
 from src.core.llm_provider import get_llm
 
@@ -16,7 +16,8 @@ from llama_index.llms.groq import Groq
 logger = logging.getLogger(__name__)
 
 class JobOfferData(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    class Config:
+        arbitrary_types_allowed = True
     
     skills: List[str] = Field(description="List of required technical and soft skills")
     missions: List[str] = Field(description="Main responsibilities and tasks mentioned in the offer")
