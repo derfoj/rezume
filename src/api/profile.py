@@ -1,82 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from src.core.database import get_db
 from src.models.user import User
 from src.models.profile import Experience, Skill, Education, Language
 from src.core.security import verify_password
-from src.api.auth import router as auth_router
-from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from src.core.security import SECRET_KEY, ALGORITHM
-from fastapi import BackgroundTasks
-from src.core.vector_store import recalculate_user_embeddings
-from src.core.pdf_extractor import extract_text_from_pdf
-# from src.agents.cv_parser import CVParserAgent # Deprecated
-from src.agents.llama_extractor import LlamaExtractorAgent
+from src.api.auth import router as auth_router, get_current_user
+from src.core.orchestration import recalculate_user_embeddings
 import os
 import shutil
-import tempfile
-import filetype # NEW
-from pathlib import Path
+import uuid
 
 router = APIRouter()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+# --- Schemas ---
 
-MAX_FILE_SIZE = 5 * 1024 * 1024 # 5 MB
-
-from fastapi import Request
-import logging
-
-logger = logging.getLogger(__name__)
-
-def get_current_user(request: Request, db: Session = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=401,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    
-    # DEBUG LOGGING
-    logger.info(f"DEBUG: Cookies received: {request.cookies}")
-    logger.info(f"DEBUG: Auth Header: {request.headers.get('Authorization')}")
-    
-    token = request.cookies.get("access_token")
-    if not token:
-        # Fallback to Authorization header for flexibility
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
-        else:
-            logger.warning("DEBUG: No token found in cookies or header.")
-            raise credentials_exception
-
-    # Remove "Bearer " prefix if present in cookie (auth.py adds it)
-    if token.startswith("Bearer "):
-        token = token.split(" ")[1]
-
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            logger.warning("DEBUG: Token payload missing email.")
-            raise credentials_exception
-    except JWTError as e:
-        logger.warning(f"DEBUG: JWT Decode Error: {e}")
-        raise credentials_exception
-    
-    user = db.query(User).filter(User.email == email).first()
-    if user is None:
-        logger.warning(f"DEBUG: User not found in DB for email {email}")
-        raise credentials_exception
-    return user
-
-# --- Pydantic Models for Response/Request ---
 class ExperienceBase(BaseModel):
     title: str
-    company: str | None = None
+    company: str
     location: str | None = None
     description: str | None = None
     start_date: str | None = None
@@ -87,8 +29,7 @@ class ExperienceCreate(ExperienceBase):
 
 class ExperienceResponse(ExperienceBase):
     id: int
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class EducationBase(BaseModel):
     institution: str
@@ -103,8 +44,7 @@ class EducationCreate(EducationBase):
 
 class EducationResponse(EducationBase):
     id: int
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class SkillBase(BaseModel):
     name: str
@@ -115,8 +55,7 @@ class SkillCreate(SkillBase):
 
 class SkillResponse(SkillBase):
     id: int
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class LanguageBase(BaseModel):
     name: str
@@ -127,8 +66,7 @@ class LanguageCreate(LanguageBase):
 
 class LanguageResponse(LanguageBase):
     id: int
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class UserResponse(BaseModel):
     email: str
@@ -145,167 +83,119 @@ class UserResponse(BaseModel):
     search_status: str | None = "listening"
     llm_provider: str | None = "openai"
     llm_model: str | None = "gpt-4o-mini"
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class UserUpdate(BaseModel):
     full_name: str | None = None
-    avatar_image: str | None = None
-    photo_cv: str | None = None
     title: str | None = None
     summary: str | None = None
     portfolio_url: str | None = None
+    avatar_image: str | None = None
     language: str | None = None
     theme: str | None = None
     selected_template: str | None = None
     linkedin_url: str | None = None
-    openai_api_key: str | None = None
     search_status: str | None = None
     llm_provider: str | None = None
     llm_model: str | None = None
 
-# --- CV Upload & Parsing ---
+class PasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str
 
-@router.post("/profile/upload-cv")
-async def upload_cv(
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user)
+# --- Endpoints ---
+
+@router.get("/profile", response_model=UserResponse)
+def get_profile(current_user: User = Depends(get_current_user)):
+    return current_user
+
+@router.put("/profile", response_model=UserResponse)
+def update_profile(
+    user_update: UserUpdate, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
 ):
-    """
-    Uploads a PDF CV, parses it using AI, and returns the structured data 
-    for user review (without saving to DB).
-    """
-    # 1. Basic Extension Check
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported (extension check).")
+    update_data = user_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(current_user, key, value)
+    
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return current_user
 
-    temp_path = None
-    try:
-        # 2. Save uploaded file to temp (streaming to avoid memory overflow)
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            size = 0
-            while chunk := await file.read(1024 * 1024): # Read in 1MB chunks
-                size += len(chunk)
-                if size > MAX_FILE_SIZE:
-                    tmp.close()
-                    os.remove(tmp.name)
-                    raise HTTPException(status_code=413, detail=f"File too large. Max size is {MAX_FILE_SIZE/1024/1024}MB.")
-                tmp.write(chunk)
-            temp_path = tmp.name
-
-        # 3. Magic Number Check (Content-Type Verification)
-        kind = filetype.guess(temp_path)
-        if kind is None or kind.mime != "application/pdf":
-            raise HTTPException(status_code=400, detail="Invalid file type. Please upload a valid PDF.")
-
-        # 4. Extract text
-        text = extract_text_from_pdf(temp_path)
-        if not text:
-            raise ValueError("Could not extract text from the provided PDF.")
-
-        # 5. Parse with AI using LlamaExtractorAgent
-        extractor = LlamaExtractorAgent()
-        data = extractor.extract_data(text)
-
-        # 6. Return data to frontend for review
-        return {
-            "message": "CV parsed successfully",
-            "data": data
-        }
-
-    except Exception as e:
-        print(f"Error during CV parsing: {e}") 
-        raise HTTPException(status_code=500, detail=f"Failed to parse CV: {str(e)}")
-    finally:
-        if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
-
-# --- Profile Photo Upload ---
 @router.post("/profile/upload-photo")
 async def upload_photo(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Uploads a profile picture for the user.
-    """
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image.")
-
-    # Create uploads directory if not exists
-    upload_dir = Path("data/img/uploads")
-    upload_dir.mkdir(parents=True, exist_ok=True)
-
-    # Filename: user_{id}_{filename} to avoid collisions but keep extension
-    filename = f"user_{current_user.id}_{file.filename}"
-    file_path = upload_dir / filename
-
-    try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+    # Ensure directory exists
+    upload_dir = "data/img/uploads"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Generate unique filename
+    file_extension = os.path.splitext(file.filename)[1]
+    if file_extension.lower() not in [".jpg", ".jpeg", ".png"]:
+        raise HTTPException(status_code=400, detail="Only JPG and PNG allowed")
         
-        # Update user profile
-        # We store the relative path or a special marker to indicate it's an upload
-        # Let's store: "uploads/filename"
-        relative_path = f"uploads/{filename}"
-        current_user.photo_cv = relative_path
-        db.commit()
+    filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join(upload_dir, filename)
+    
+    # Save file
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
         
-        return {"message": "Photo uploaded successfully", "path": relative_path}
-    except Exception as e:
-        print(f"Error uploading photo: {e}")
-        raise HTTPException(status_code=500, detail="Failed to upload photo.")
+    # Update user in DB (store relative path)
+    current_user.photo_cv = f"uploads/{filename}"
+    db.add(current_user)
+    db.commit()
+    
+    return {"photo_url": f"uploads/{filename}"}
 
-# --- Endpoints ---
-
-@router.get("/profile/me", response_model=UserResponse)
-def get_me(current_user: User = Depends(get_current_user)):
-    return current_user
-
-@router.put("/profile/me", response_model=UserResponse)
-def update_me(
-    user_update: UserUpdate, 
-    background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user), 
+@router.post("/profile/upload-avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if user_update.full_name is not None:
-        current_user.full_name = user_update.full_name
-    if user_update.avatar_image is not None:
-        current_user.avatar_image = user_update.avatar_image
-    if user_update.photo_cv is not None:
-        current_user.photo_cv = user_update.photo_cv
-    if user_update.title is not None:
-        current_user.title = user_update.title
-    if user_update.summary is not None:
-        current_user.summary = user_update.summary
-    if user_update.portfolio_url is not None:
-        current_user.portfolio_url = user_update.portfolio_url
-    if user_update.language is not None:
-        current_user.language = user_update.language
-    if user_update.theme is not None:
-        current_user.theme = user_update.theme
-    if user_update.selected_template is not None:
-        current_user.selected_template = user_update.selected_template
-    if user_update.linkedin_url is not None:
-        current_user.linkedin_url = user_update.linkedin_url
-    if user_update.openai_api_key is not None:
-        current_user.openai_api_key = user_update.openai_api_key
-    if user_update.search_status is not None:
-        current_user.search_status = user_update.search_status
-    if user_update.llm_provider is not None:
-        current_user.llm_provider = user_update.llm_provider
-    if user_update.llm_model is not None:
-        current_user.llm_model = user_update.llm_model
+    # Ensure directory exists
+    upload_dir = "data/img/uploads"
+    os.makedirs(upload_dir, exist_ok=True)
     
+    # Generate unique filename
+    file_extension = os.path.splitext(file.filename)[1]
+    if file_extension.lower() not in [".jpg", ".jpeg", ".png"]:
+        raise HTTPException(status_code=400, detail="Only JPG and PNG allowed")
+        
+    filename = f"avatar_{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join(upload_dir, filename)
+    
+    # Save file
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    # Update user in DB (store relative path)
+    current_user.avatar_image = f"uploads/{filename}"
+    db.add(current_user)
     db.commit()
-    db.refresh(current_user)
     
-    # Trigger embedding recalculation
-    background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+    return {"avatar_url": f"uploads/{filename}"}
+
+@router.put("/profile/password")
+def update_password(
+    pass_update: PasswordUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not verify_password(pass_update.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect current password")
     
-    return current_user
+    from src.core.security import get_password_hash
+    current_user.hashed_password = get_password_hash(pass_update.new_password)
+    db.add(current_user)
+    db.commit()
+    return {"message": "Password updated successfully"}
 
 # --- Experiences ---
 @router.get("/profile/experiences", response_model=List[ExperienceResponse])
@@ -319,7 +209,7 @@ def create_experience(
     current_user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
-    db_exp = Experience(**experience.dict(), user_id=current_user.id)
+    db_exp = Experience(**experience.model_dump(), user_id=current_user.id)
     db.add(db_exp)
     db.commit()
     db.refresh(db_exp)
@@ -339,7 +229,7 @@ def update_experience(
     if not db_exp:
         raise HTTPException(status_code=404, detail="Experience not found")
     
-    for key, value in experience.dict().items():
+    for key, value in experience.model_dump().items():
         setattr(db_exp, key, value)
     
     db.commit()
@@ -375,7 +265,7 @@ def create_education(
     current_user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
-    db_edu = Education(**education.dict(), user_id=current_user.id)
+    db_edu = Education(**education.model_dump(), user_id=current_user.id)
     db.add(db_edu)
     db.commit()
     db.refresh(db_edu)
@@ -394,7 +284,7 @@ def update_education(
     if not db_edu:
         raise HTTPException(status_code=404, detail="Education not found")
 
-    for key, value in education.dict().items():
+    for key, value in education.model_dump().items():
         setattr(db_edu, key, value)
 
     db.commit()
@@ -430,7 +320,7 @@ def create_skill(
     current_user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
-    db_skill = Skill(**skill.dict(), user_id=current_user.id)
+    db_skill = Skill(**skill.model_dump(), user_id=current_user.id)
     db.add(db_skill)
     db.commit()
     db.refresh(db_skill)
@@ -449,7 +339,7 @@ def update_skill(
     if not db_skill:
         raise HTTPException(status_code=404, detail="Skill not found")
 
-    for key, value in skill.dict().items():
+    for key, value in skill.model_dump().items():
         setattr(db_skill, key, value)
 
     db.commit()
@@ -485,7 +375,7 @@ def create_language(
     current_user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
-    db_lang = Language(**language.dict(), user_id=current_user.id)
+    db_lang = Language(**language.model_dump(), user_id=current_user.id)
     db.add(db_lang)
     db.commit()
     db.refresh(db_lang)
@@ -504,7 +394,7 @@ def update_language(
     if not db_lang:
         raise HTTPException(status_code=404, detail="Language not found")
 
-    for key, value in language.dict().items():
+    for key, value in language.model_dump().items():
         setattr(db_lang, key, value)
 
     db.commit()
