@@ -338,6 +338,20 @@ export default function CVBuilderApp() {
 
   const handleDownload = async () => {
     if (!editableExperiences || editableExperiences.length === 0) return;
+
+    // OPTIMIZATION: If we already have a preview URL (blob), download it directly
+    if (previewUrl) {
+      addLog("Downloading cached PDF...", 'success');
+      const a = document.createElement('a');
+      a.href = previewUrl;
+      a.download = "reZume_CV_Optimized.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      addToast(t.toasts.pdf_success, 'success');
+      return;
+    }
+
     setIsDownloading(true);
     setLogs([]); // Clear previous logs
     addLog("Requesting PDF generation...", 'info');
@@ -364,15 +378,14 @@ export default function CVBuilderApp() {
       if (blob.size === 0) throw new Error("Generated PDF is empty");
 
       const url = window.URL.createObjectURL(blob);
+      setPreviewUrl(url); // Store for future use
+      
       const a = document.createElement('a');
       a.href = url;
       a.download = "reZume_CV_Optimized.pdf";
       document.body.appendChild(a);
       a.click();
       a.remove();
-      
-      // Slight delay to ensure download starts before revoking
-      setTimeout(() => window.URL.revokeObjectURL(url), 100);
       
       addLog("PDF Download initiated.", 'success');
       addToast(t.toasts.pdf_success, 'success');
@@ -391,6 +404,12 @@ export default function CVBuilderApp() {
     const updated = [...editableExperiences];
     updated[index] = { ...updated[index], [field]: value };
     setEditableExperiences(updated);
+    // Reset cache if user edits content
+    setGenerationId(null);
+    if (previewUrl) {
+        window.URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
+    }
   };
 
   return (
