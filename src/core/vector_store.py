@@ -183,18 +183,6 @@ def search_vector_store(
     if k == 0:
         return []
         
-    # Check for dimension mismatch (e.g. model changed)
-    if index.d != query_embedding.shape[1]:
-        logger.warning(f"Dimension mismatch: Index has {index.d}, but model produces {query_embedding.shape[1]}. Rebuilding index...")
-        
-        # Rebuild index with existing documents
-        # Note: documents are already loaded from JSON above
-        build_vector_store(documents, index_name=index_name)
-        
-        # Reload index
-        index = faiss.read_index(index_path)
-        logger.info(f"Index {index_name} rebuilt and reloaded successfully.")
-
     distances, indices = index.search(query_embedding, k)
 
     # Format Results
