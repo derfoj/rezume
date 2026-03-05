@@ -204,7 +204,7 @@ class GeneratorAgent:
         # Determine verbosity based on experience count
         num_experiences = len(experiences)
         if num_experiences <= 3:
-        verbosity_instruction = "HAUTE VERBOSITÉ REQUISE : Le candidat a 3 expériences sélectionnées (3 ou moins). étoffe chaque bullet point. Détaille un peu le contexte, la méthodologie, les défis techniques et les résultats. Chaque expérience doit occuper un espace visuel raisonnable conséquent pour éviter que le CV ne paraisse vide. Ne sois PAS concis."
+            verbosity_instruction = "HAUTE VERBOSITÉ REQUISE : Le candidat a 3 expériences sélectionnées (3 ou moins). étoffe chaque bullet point. Détaille un peu le contexte, la méthodologie, les défis techniques et les résultats. Chaque expérience doit occuper un espace visuel raisonnable conséquent pour éviter que le CV ne paraisse vide. Ne sois PAS concis."
         elif num_experiences >= 4:
             verbosity_instruction = "OPTIMISATION INTELLIGENTE (OBJECTIF 1 PAGE) : Le candidat a plusieurs expériences. Tu DOIS faire tenir le CV sur UNE SEULE page. Pour cela, applique cette stratégie de condensation : sois DÉTAILLÉ pour les 2 expériences les plus récentes (3-4 bullet points percutants), mais sois TRÈS CONCIS pour les expériences plus anciennes (1-2 bullet points synthétiques). Cherche l'équilibre parfait entre densité d'information et gain de place."
         else:
