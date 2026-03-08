@@ -1,71 +1,67 @@
-# Core
+# --- Core & Environment ---
 python-dotenv==1.0.1
 requests==2.31.0
 tqdm==4.66.4
 pyyaml==6.0.1
 
-# LLM & NLP
+# --- LLM & AI Orchestration (LangChain 0.3 Stack) ---
+langchain==0.3.0
+langchain-core==0.3.0
+langchain-openai==0.2.0
+langchain-mistralai==0.2.0
+langgraph==0.2.20
 openai==1.45.0
 anthropic==0.34.2
 groq==0.11.0
 google-genai==0.4.0
 tiktoken==0.7.0
 
-# Vector Store
-faiss-cpu==1.8.0
+# --- Vector Store & Embeddings ---
+# Pinned numpy to avoid v2.0 breaking changes with FAISS
 numpy==1.26.4
+faiss-cpu==1.8.0
+sentence-transformers==3.0.1
 
-# Text Processing
+# --- Parsing & Document Processing (Llama-Index 0.12 Stack) ---
+llama-parse==0.5.6
+llama-index-core==0.12.0
+llama-index-llms-openai==0.3.0
+llama-index-llms-groq==0.3.0
+python-docx==1.1.2
+pypdf==5.0.1
+beautifulsoup4==4.12.3
+
+# --- Text Processing & NLP ---
 nltk==3.9.1
 spacy==3.7.5
-beautifulsoup4==4.12.3
 thefuzz[speedup]==0.22.1
 
-# Data Handling
-pandas==2.2.2
-
-# Backend / API
+# --- Backend & API ---
 fastapi==0.115.0
 uvicorn==0.30.6
 gunicorn==23.0.0
+pydantic==2.10.0
+pydantic-core==2.27.0
+pydantic-settings==2.5.2
 python-multipart==0.0.9
 sqlalchemy==2.0.35
 psycopg2-binary==2.9.9
 alembic==1.14.0
 passlib[argon2]==1.7.4
 python-jose[cryptography]==3.3.0
-
-# File parsing
-python-docx==1.1.2
-pypdf==5.0.1
-llama-parse==0.5.6
-llama-index-core==0.12.0
-llama-index-llms-openai==0.2.0
-llama-index-llms-groq==0.2.0
-
-# Orchestration / Agents
-langgraph==0.2.20
-pydantic==2.10.0
-pydantic-core==2.27.0
-typing-extensions==4.12.2
-pydantic-settings==2.5.2
-langchain==0.3.0
-langchain-openai==0.2.0
-langchain-mistralai==0.2.0
-langchain-core==0.3.0
+pandas==2.2.2
 Jinja2==3.1.4
 
-# Utils
+# --- Utils & Logging ---
 rich==13.8.1
 colorama==0.4.6
 loguru==0.7.2
 filetype==1.2.0
+typing-extensions==4.12.2
 
-# Tests
+# --- Tests & Quality ---
 pytest==8.3.3
 pytest-cov==5.0.0
-
-# Dev tools
 black==24.8.0
 flake8==7.1.1
 jsonschema==4.23.0
