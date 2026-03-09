@@ -7,15 +7,9 @@ logger = logging.getLogger(__name__)
 
 class OptimizerAgent:
     def __init__(self):
-        # We use the same LLM provider logic as elsewhere
-        self.llm = self._get_llm_client()
-        self.prompt_config = load_yaml("src/config/prompts/optimizer.yaml")
-
-    def _get_llm_client(self):
-        # Quick factory to get the best available model for text generation
-        from src.core.llm_provider import get_llm
         # Using the standard get_llm which handles provider selection from env/settings
-        return get_llm()
+        self.llm = get_llm()
+        self.prompt_config = load_yaml("src/config/prompts/optimizer.yaml")
 
     def optimize_description(self, text: str, tone: str = "standard", job_offer: str = None) -> str:
         """
