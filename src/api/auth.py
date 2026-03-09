@@ -18,7 +18,10 @@ async def get_current_user(request: Request, db: Session = Depends(get_db), toke
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    # Try to get token from cookie if not in header
+    # 1. Try to get token from Authorization Header (Standard for Cross-Domain)
+    # token is automatically extracted by oauth2_scheme if present in headers
+    
+    # 2. Fallback to Cookie if header is missing
     if not token:
         token = request.cookies.get("access_token")
         if token and token.startswith("Bearer "):
@@ -51,7 +54,7 @@ class Token(BaseModel):
     token_type: str
 
 @router.post("/register", response_model=Token)
-def register(user: UserCreate, db: Session = Depends(get_db)):
+def register(response: Response, user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -63,6 +66,18 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     
     access_token = create_access_token(data={"sub": new_user.email})
+    
+    # Set HttpOnly Cookie for immediate login
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {access_token}",
+        httponly=True,
+        max_age=1800, # 30 minutes
+        expires=1800,
+        samesite="none",
+        secure=True
+    )
+    
     return {"access_token": access_token, "token_type": "bearer"}
 
 class UserLogin(BaseModel):
