@@ -24,17 +24,11 @@ COPY requirements.txt .
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Download NLTK data
-RUN python -c "import nltk; nltk.download('punkt'); nltk.download('wordnet')"
-
-# Download SpaCy model
-RUN python -m spacy download en_core_web_sm
-
 # Copy the rest of the application code
 COPY . .
 
 # Expose the port FastAPI runs on
 EXPOSE 8000
 
-# Use Gunicorn as the production server
-CMD ["sh", "-c", "gunicorn -w 4 -k uvicorn.workers.UvicornWorker api:app --bind 0.0.0.0:$PORT"]
+# Use Gunicorn as the production server (Reduced workers for Render Free tier memory limits)
+CMD ["sh", "-c", "gunicorn -w 1 -k uvicorn.workers.UvicornWorker api:app --bind 0.0.0.0:$PORT --timeout 120"]
