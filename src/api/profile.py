@@ -144,24 +144,27 @@ async def upload_cv(
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # Call the corrected function
         cv_text = extract_text_from_pdf(temp_path)
 
         if not cv_text or len(cv_text.strip()) < 50:
-            raise HTTPException(status_code=400, detail="Extracted text is too short.")
+            raise HTTPException(status_code=400, detail="Le texte extrait du CV est trop court ou illisible.")
 
         parser = CVParserAgent()
         extracted_data = parser.parse_cv(cv_text)
 
+        # 1. Update User Profile
         if extracted_data.get("full_name"): current_user.full_name = extracted_data["full_name"]
         if extracted_data.get("title"): current_user.title = extracted_data["title"]
         if extracted_data.get("summary"): current_user.summary = extracted_data["summary"]
+        db.add(current_user)
 
+        # 2. Clean existing related data to avoid mess (Only for the current user)
         db.query(Experience).filter(Experience.user_id == current_user.id).delete()
         db.query(Education).filter(Education.user_id == current_user.id).delete()
         db.query(Skill).filter(Skill.user_id == current_user.id).delete()
         db.query(Language).filter(Language.user_id == current_user.id).delete()
 
+        # 3. Insert new data with explicit flushing
         for exp in extracted_data.get("experiences", []):
             db.add(Experience(
                 user_id=current_user.id,
@@ -190,13 +193,18 @@ async def upload_cv(
         for lang in extracted_data.get("languages", []):
             db.add(Language(user_id=current_user.id, name=lang.get("name"), level=lang.get("level")))
 
+        # Final commit to PostgreSQL
         db.commit()
+        
+        # 4. Trigger background rebuild
         background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+        
         return {"message": "CV successfully imported", "data": extracted_data}
 
     except Exception as e:
-        logger.error(f"Failed to process CV: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to process CV: {str(e)}")
+        db.rollback()
+        logger.error(f"PostgreSQL Database Error during CV upload: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur lors de l'enregistrement en base de données : {str(e)}")
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
