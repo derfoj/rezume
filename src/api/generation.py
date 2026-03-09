@@ -11,7 +11,7 @@ from src.core.database import get_db
 from src.core.api_models import CVGenerationRequest
 from src.agents.generator import GeneratorAgent
 from src.core.knowledge_base import get_profile_from_db, Profile
-from src.api.profile import get_current_user
+from src.api.auth import get_current_user
 from src.models.user import User
 from src.config.constants import TEMPLATES_DIR
 from src.core.orchestration import _rank_skills_by_relevance # NEW IMPORT

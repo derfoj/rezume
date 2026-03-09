@@ -10,7 +10,7 @@ from src.core.api_models import JobOfferRequest, AnalysisResponse
 from src.core.orchestration import run_analysis_pipeline
 from src.agents.optimizer import OptimizerAgent # New import
 
-from src.api.profile import get_current_user
+from src.api.auth import get_current_user
 from src.models.user import User
 
 router = APIRouter()

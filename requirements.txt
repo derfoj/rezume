@@ -1,6 +1,7 @@
 # --- Core & Environment ---
 python-dotenv==1.0.1
 requests==2.31.0
+httpx==0.27.2
 tqdm==4.66.4
 pyyaml==6.0.1
 

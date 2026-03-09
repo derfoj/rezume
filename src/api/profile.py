@@ -7,7 +7,7 @@ from src.models.user import User
 from src.models.profile import Experience, Skill, Education, Language
 from src.core.security import verify_password
 from src.api.auth import router as auth_router, get_current_user
-from src.core.orchestration import recalculate_user_embeddings
+from src.core.vector_store import recalculate_user_embeddings
 import os
 import shutil
 import uuid
@@ -105,11 +105,11 @@ class PasswordUpdate(BaseModel):
 
 # --- Endpoints ---
 
-@router.get("/profile", response_model=UserResponse)
+@router.get("/profile/me", response_model=UserResponse)
 def get_profile(current_user: User = Depends(get_current_user)):
     return current_user
 
-@router.put("/profile", response_model=UserResponse)
+@router.put("/profile/me", response_model=UserResponse)
 def update_profile(
     user_update: UserUpdate, 
     current_user: User = Depends(get_current_user), 
