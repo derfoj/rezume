@@ -159,7 +159,14 @@ export const AuthProvider = ({ children }) => {
 
         setIsSessionExpired(false);
         setIsServerDown(false);
-        await fetchUser();
+        
+        // Wait a tiny bit for token/cookie propagation
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const success = await fetchUser();
+        if (!success) {
+            throw new Error("Authentification réussie, mais impossible de charger le profil. Veuillez rafraîchir.");
+        }
     };
 
     const logout = async () => {
