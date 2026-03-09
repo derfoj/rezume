@@ -8,17 +8,113 @@ from src.models.profile import Experience, Skill, Education, Language
 from src.core.security import verify_password
 from src.api.auth import router as auth_router, get_current_user
 from src.core.vector_store import recalculate_user_embeddings
+from src.core.pdf_extractor import PDFExtractor
+from src.agents.cv_parser import CVParserAgent
 import os
 import shutil
 import uuid
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # --- Schemas ---
+...
+@router.post("/profile/upload-cv")
+async def upload_cv(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Uploads a CV file, extracts its content via AI, and populates the user profile.
+    """
+    # 1. Save file temporarily
+    temp_dir = "data/tmp"
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_path = os.path.join(temp_dir, f"cv_{uuid.uuid4()}_{file.filename}")
 
-class ExperienceBase(BaseModel):
-    title: str
-    company: str
+    try:
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # 2. Extract text from PDF/Docx
+        extractor = PDFExtractor()
+        cv_text = extractor.extract_text(temp_path)
+
+        if not cv_text or len(cv_text.strip()) < 50:
+            raise HTTPException(status_code=400, detail="Could not extract enough text from CV. Is it a scanned image?")
+
+        # 3. Parse text with AI
+        parser = CVParserAgent()
+        extracted_data = parser.parse_cv(cv_text)
+
+        # 4. Populate Database
+        # --- Update Basic Info ---
+        if extracted_data.get("full_name"): current_user.full_name = extracted_data["full_name"]
+        if extracted_data.get("title"): current_user.title = extracted_data["title"]
+        if extracted_data.get("summary"): current_user.summary = extracted_data["summary"]
+
+        # --- Clean existing data to avoid duplicates (optional, based on UX choice) ---
+        # For a clean injection, we remove old experiences/edu/skills
+        db.query(Experience).filter(Experience.user_id == current_user.id).delete()
+        db.query(Education).filter(Education.user_id == current_user.id).delete()
+        db.query(Skill).filter(Skill.user_id == current_user.id).delete()
+        db.query(Language).filter(Language.user_id == current_user.id).delete()
+
+        # --- Add Experiences ---
+        for exp in extracted_data.get("experiences", []):
+            new_exp = Experience(
+                user_id=current_user.id,
+                title=exp.get("title", "Sans titre"),
+                company=exp.get("company", "Inconnue"),
+                location=exp.get("location"),
+                description=exp.get("description"),
+                start_date=exp.get("period", "").split("-")[0].strip() if "-" in exp.get("period", "") else exp.get("period"),
+                end_date=exp.get("period", "").split("-")[1].strip() if "-" in exp.get("period", "") else None
+            )
+            db.add(new_exp)
+
+        # --- Add Education ---
+        for edu in extracted_data.get("education", []):
+            new_edu = Education(
+                user_id=current_user.id,
+                institution=edu.get("institution", "Inconnue"),
+                degree=edu.get("degree"),
+                description=edu.get("description"),
+                start_date=edu.get("period", "").split("-")[0].strip() if "-" in edu.get("period", "") else edu.get("period"),
+                end_date=edu.get("period", "").split("-")[1].strip() if "-" in edu.get("period", "") else None
+            )
+            db.add(new_edu)
+
+        # --- Add Skills ---
+        all_skills = extracted_data.get("skills", []) + extracted_data.get("soft_skills", [])
+        for skill_name in all_skills:
+            db.add(Skill(user_id=current_user.id, name=skill_name, category="Imported"))
+
+        # --- Add Languages ---
+        for lang in extracted_data.get("languages", []):
+            db.add(Language(user_id=current_user.id, name=lang.get("name"), level=lang.get("level")))
+
+        db.commit()
+
+        # 5. Trigger Vector Store Rebuild in background
+        background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+
+        return {"message": "CV successfully imported", "data": extracted_data}
+
+    except Exception as e:
+        logger.error(f"Failed to process CV: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to process CV: {str(e)}")
+    finally:
+        # Cleanup temp file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+@router.post("/profile/upload-photo")
+async def upload_photo(
+...
     location: str | None = None
     description: str | None = None
     start_date: str | None = None
