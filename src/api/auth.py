@@ -41,7 +41,7 @@ async def get_current_user(request: Request, db: Session = Depends(get_db), toke
     return user
 
 class UserCreate(BaseModel):
-
+    email: str
     password: str
     full_name: str = None
     title: str = "Étudiant"
