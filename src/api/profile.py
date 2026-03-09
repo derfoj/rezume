@@ -8,7 +8,7 @@ from src.models.profile import Experience, Skill, Education, Language
 from src.core.security import verify_password
 from src.api.auth import router as auth_router, get_current_user
 from src.core.vector_store import recalculate_user_embeddings
-from src.core.pdf_extractor import PDFExtractor
+from src.core.pdf_extractor import extract_text_from_pdf
 from src.agents.cv_parser import CVParserAgent
 import os
 import shutil
@@ -144,8 +144,8 @@ async def upload_cv(
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        extractor = PDFExtractor()
-        cv_text = extractor.extract_text(temp_path)
+        # Call the corrected function
+        cv_text = extract_text_from_pdf(temp_path)
 
         if not cv_text or len(cv_text.strip()) < 50:
             raise HTTPException(status_code=400, detail="Extracted text is too short.")
