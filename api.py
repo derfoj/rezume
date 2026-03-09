@@ -76,10 +76,12 @@ app.include_router(generation.router, prefix="/api", tags=["Generation"])
 @app.get("/")
 def health_check():
     """Health check endpoint to verify that the backend is running."""
+    from src.core.database import DATABASE_URL
+    db_type = "PostgreSQL" if DATABASE_URL.startswith("postgresql") else "SQLite"
     return {
         "status": "Online",
         "backend": "Python/FastAPI",
-        "database": "SQLite",
+        "database": db_type,
         "ai_ready": parser_agent is not None
     }
 
