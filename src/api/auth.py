@@ -77,15 +77,15 @@ def login(response: Response, user: UserLogin, db: Session = Depends(get_db)):
     
     access_token = create_access_token(data={"sub": db_user.email})
     
-    # Set HttpOnly Cookie
+    # Set HttpOnly Cookie with production-ready settings
     response.set_cookie(
         key="access_token",
         value=f"Bearer {access_token}",
         httponly=True,
         max_age=1800, # 30 minutes
         expires=1800,
-        samesite="lax",
-        secure=False # Set to True in production with HTTPS
+        samesite="none", # Required for cross-domain (Vercel to Render)
+        secure=True # Required for samesite="none" and HTTPS
     )
     return {"message": "Login successful", "access_token": access_token, "token_type": "bearer"} # Keeping token in body for now as fallback/debug, but frontend will ignore.
 
