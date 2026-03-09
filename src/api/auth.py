@@ -9,6 +9,7 @@ from src.core.security import get_password_hash, verify_password, create_access_
 
 router = APIRouter()
 
+# oauth2_scheme handles the 'Authorization: Bearer <token>' header automatically
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)
 
 async def get_current_user(request: Request, db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
@@ -18,10 +19,7 @@ async def get_current_user(request: Request, db: Session = Depends(get_db), toke
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    # 1. Try to get token from Authorization Header (Standard for Cross-Domain)
-    # token is automatically extracted by oauth2_scheme if present in headers
-    
-    # 2. Fallback to Cookie if header is missing
+    # If no token in Authorization header, check cookies (fallback)
     if not token:
         token = request.cookies.get("access_token")
         if token and token.startswith("Bearer "):
@@ -60,19 +58,25 @@ def register(response: Response, user: UserCreate, db: Session = Depends(get_db)
         raise HTTPException(status_code=400, detail="Email already registered")
     
     hashed_password = get_password_hash(user.password)
-    new_user = User(email=user.email, hashed_password=hashed_password, full_name=user.full_name, title=user.title)
+    # Using specific keyword arguments to ensure strict DB compatibility
+    new_user = User(
+        email=user.email, 
+        hashed_password=hashed_password, 
+        full_name=user.full_name, 
+        title=user.title or "Étudiant"
+    )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     
     access_token = create_access_token(data={"sub": new_user.email})
     
-    # Set HttpOnly Cookie for immediate login
+    # Set cookie for traditional session support
     response.set_cookie(
         key="access_token",
         value=f"Bearer {access_token}",
         httponly=True,
-        max_age=1800, # 30 minutes
+        max_age=1800, 
         expires=1800,
         samesite="none",
         secure=True
@@ -92,17 +96,16 @@ def login(response: Response, user: UserLogin, db: Session = Depends(get_db)):
     
     access_token = create_access_token(data={"sub": db_user.email})
     
-    # Set HttpOnly Cookie with production-ready settings
     response.set_cookie(
         key="access_token",
         value=f"Bearer {access_token}",
         httponly=True,
-        max_age=1800, # 30 minutes
+        max_age=1800,
         expires=1800,
-        samesite="none", # Required for cross-domain (Vercel to Render)
-        secure=True # Required for samesite="none" and HTTPS
+        samesite="none",
+        secure=True
     )
-    return {"message": "Login successful", "access_token": access_token, "token_type": "bearer"} # Keeping token in body for now as fallback/debug, but frontend will ignore.
+    return {"message": "Login successful", "access_token": access_token, "token_type": "bearer"}
 
 @router.post("/logout")
 def logout(response: Response):
