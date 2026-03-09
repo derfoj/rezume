@@ -2,6 +2,7 @@
 .rezume/
 .venv/
 .env
+#frontend/.env.production
 #configuration vs code
 GEMINI.md
 .vscode/
