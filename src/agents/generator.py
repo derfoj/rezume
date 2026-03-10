@@ -4,6 +4,7 @@ import json
 import subprocess
 import uuid
 import gc
+import logging
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -11,8 +12,9 @@ from src.core.utils import load_yaml, load_text
 from src.core.llm_provider import get_llm
 from src.config.constants import TEMPLATES_DIR
 
+logger = logging.getLogger(__name__)
+
 def clean_unicode_for_latex(text: str) -> str:
-    """Remplace les caractères Unicode qui font planter pdflatex."""
     replacements = {
         "ᵉ": r"\textsuperscript{e}", "’": "'", "…": "...", "–": "--", "—": "---",
         "€": r"\euro{}", "«": r"\guillemotleft{}", "»": r"\guillemotright{}"
@@ -22,7 +24,6 @@ def clean_unicode_for_latex(text: str) -> str:
     return text
 
 def escape_latex_special_chars(text: str) -> str:
-    """Échappe les caractères spéciaux LaTeX."""
     if not isinstance(text, str): return text
     chars = {
         "\\": r"\textbackslash{}", "&": r"\&", "%": r"\%", "$": r"\$", "#": r"\#",
@@ -67,9 +68,37 @@ class GeneratorAgent:
 
     def generate_cv_from_llm(self, user_profile: Dict[str, Any], experiences: List[Dict[str, Any]], template_name: str = "modern", feedback: str = None, session_dir: Path = None) -> (str, str):
         if not self.llm:
-            raise RuntimeError("IA non disponible pour la génération.")
+            raise RuntimeError("IA non disponible.")
 
-        # Nettoyage des données
+        # --- GESTION ROBUSTE DE LA PHOTO ---
+        photo_path = ""
+        if user_profile.get("photo_path"):
+            p = user_profile["photo_path"]
+            # Si c'est un ID d'avatar, on cherche dans les assets
+            avatar_map = {
+                "man_laptop": "avatar_man_laptop.png", 
+                "woman_laptop": "avatar_woman_laptop.png",
+                "man_coffee": "avatar_man_coffee.png",
+                "woman_rocket": "avatar_woman_rocket.png"
+            }
+            photo_name = avatar_map.get(p, p)
+            
+            # Chemins possibles (Vercel/Render friendly)
+            root = Path(__file__).resolve().parent.parent.parent
+            candidates = [
+                root / "frontend/src/assets" / photo_name,
+                root / "data/img" / photo_name,
+                root / "data/img/uploads" / photo_name.split('/')[-1] # Cas des uploads
+            ]
+            
+            for cand in candidates:
+                if cand.exists():
+                    photo_path = str(cand).replace("\\", "/")
+                    break
+        
+        user_profile["photo_path"] = photo_path
+        # -----------------------------------
+
         safe_profile = sanitize_data_recursive(user_profile)
         safe_experiences = sanitize_data_recursive(experiences)
 
@@ -85,44 +114,51 @@ class GeneratorAgent:
 
         if feedback: prompt += f"\n\nCorrection : {feedback}"
 
-        # Appel LLM
-        raw_output = self.llm.chat(prompt)
-        clean_latex = self._clean_llm_output(clean_unicode_for_latex(raw_output))
+        try:
+            raw_output = self.llm.chat(prompt)
+            clean_latex = self._clean_llm_output(clean_unicode_for_latex(raw_output))
+        except Exception as e:
+            logger.error(f"LLM Chat Error: {e}")
+            raise RuntimeError("L'IA n'a pas pu générer le code LaTeX.")
 
         # Dossier de session
+        unique_id = uuid.uuid4()
+        base_name = f"rezume_llm_{unique_id}"
         if not session_dir:
-            base_name = f"rezume_llm_{uuid.uuid4()}"
             session_dir = Path(__file__).resolve().parent.parent.parent / "outputs/generated_cvs" / base_name
-            os.makedirs(session_dir, exist_ok=True)
-        else:
-            base_name = session_dir.name
         
         session_dir = Path(session_dir)
-        tex_path, pdf_path = session_dir / f"{base_name}.tex", session_dir / f"{base_name}.pdf"
+        os.makedirs(session_dir, exist_ok=True)
+        
+        tex_path = session_dir / f"{base_name}.tex"
+        pdf_path = session_dir / f"{base_name}.pdf"
         tex_path.write_text(clean_latex, encoding="utf-8")
 
         # Compilation
         success = False
+        # 1. Tentative locale (uniquement si pdflatex est présent)
         try:
-            # Test local (si pdflatex est là)
-            subprocess.run(["pdflatex", "-interaction=nonstopmode", f"-output-directory={session_dir}", str(tex_path)], capture_output=True, timeout=20)
-            if pdf_path.exists(): success = True
-        except: pass
+            res = subprocess.run(["pdflatex", "-version"], capture_output=True)
+            if res.returncode == 0:
+                subprocess.run(["pdflatex", "-interaction=nonstopmode", f"-output-directory={session_dir}", str(tex_path)], capture_output=True, timeout=30)
+                if pdf_path.exists(): success = True
+        except:
+            pass
 
+        # 2. Fallback API Externe (Si local échoue ou absent)
         if not success:
-            # Fallback API ultra-robuste
             try:
                 import requests
-                # On envoie le code brut dans le body pour éviter les limites de taille d'URL
-                res = requests.post("https://latexonline.cc/compile", data={"text": clean_latex}, timeout=45)
+                # On utilise un timeout plus long pour les gros fichiers
+                res = requests.post("https://latexonline.cc/compile", data={"text": clean_latex}, timeout=60)
                 if res.status_code == 200:
                     pdf_path.write_bytes(res.content)
                     success = True
             except Exception as e:
-                print(f"Erreur API LatexOnline: {e}")
+                logger.error(f"LatexOnline API Error: {e}")
 
         if not success:
-            raise RuntimeError("Impossible de générer le PDF. Vérifiez votre syntaxe LaTeX.")
+            raise RuntimeError("La compilation du PDF a échoué. Vérifiez la structure de vos données.")
         
-        gc.collect() # Libère la RAM immédiatement
+        gc.collect()
         return str(pdf_path), str(tex_path)
