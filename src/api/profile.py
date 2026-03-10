@@ -10,6 +10,7 @@ from src.api.auth import router as auth_router, get_current_user
 from src.core.vector_store import recalculate_user_embeddings
 from src.core.pdf_extractor import extract_text_from_pdf
 from src.agents.cv_parser import CVParserAgent
+from src.core.storage import upload_file_to_cloud # NEW
 import os
 import shutil
 import uuid
@@ -144,6 +145,7 @@ async def upload_cv(
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
+        # Call the corrected function
         cv_text = extract_text_from_pdf(temp_path)
 
         if not cv_text or len(cv_text.strip()) < 50:
@@ -158,13 +160,13 @@ async def upload_cv(
         if extracted_data.get("summary"): current_user.summary = extracted_data["summary"]
         db.add(current_user)
 
-        # 2. Clean existing related data to avoid mess (Only for the current user)
+        # 2. Clean existing related data
         db.query(Experience).filter(Experience.user_id == current_user.id).delete()
         db.query(Education).filter(Education.user_id == current_user.id).delete()
         db.query(Skill).filter(Skill.user_id == current_user.id).delete()
         db.query(Language).filter(Language.user_id == current_user.id).delete()
 
-        # 3. Insert new data with explicit flushing
+        # 3. Insert new data
         for exp in extracted_data.get("experiences", []):
             db.add(Experience(
                 user_id=current_user.id,
@@ -193,18 +195,14 @@ async def upload_cv(
         for lang in extracted_data.get("languages", []):
             db.add(Language(user_id=current_user.id, name=lang.get("name"), level=lang.get("level")))
 
-        # Final commit to PostgreSQL
         db.commit()
-        
-        # 4. Trigger background rebuild
         background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
-        
         return {"message": "CV successfully imported", "data": extracted_data}
 
     except Exception as e:
         db.rollback()
-        logger.error(f"PostgreSQL Database Error during CV upload: {e}")
-        raise HTTPException(status_code=500, detail=f"Erreur lors de l'enregistrement en base de données : {str(e)}")
+        logger.error(f"Error during CV upload: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
@@ -215,19 +213,27 @@ async def upload_photo(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    upload_dir = "data/img/uploads"
-    os.makedirs(upload_dir, exist_ok=True)
-    file_extension = os.path.splitext(file.filename)[1]
-    if file_extension.lower() not in [".jpg", ".jpeg", ".png"]:
-        raise HTTPException(status_code=400, detail="Only JPG and PNG allowed")
-    filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(upload_dir, filename)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    current_user.photo_cv = f"uploads/{filename}"
-    db.add(current_user)
-    db.commit()
-    return {"photo_url": f"uploads/{filename}"}
+    """Uploads photo to Cloudinary for Render persistence."""
+    temp_dir = "data/tmp"
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_path = os.path.join(temp_dir, f"photo_{uuid.uuid4()}_{file.filename}")
+    
+    try:
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Upload to Cloudinary
+        cloud_url = upload_file_to_cloud(temp_path, folder="photos")
+        if not cloud_url:
+            raise HTTPException(status_code=500, detail="Failed to upload photo to cloud storage")
+            
+        current_user.photo_cv = cloud_url
+        db.add(current_user)
+        db.commit()
+        return {"photo_url": cloud_url}
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 @router.post("/profile/upload-avatar")
 async def upload_avatar(
@@ -235,19 +241,26 @@ async def upload_avatar(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    upload_dir = "data/img/uploads"
-    os.makedirs(upload_dir, exist_ok=True)
-    file_extension = os.path.splitext(file.filename)[1]
-    if file_extension.lower() not in [".jpg", ".jpeg", ".png"]:
-        raise HTTPException(status_code=400, detail="Only JPG and PNG allowed")
-    filename = f"avatar_{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(upload_dir, filename)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    current_user.avatar_image = f"uploads/{filename}"
-    db.add(current_user)
-    db.commit()
-    return {"avatar_url": f"uploads/{filename}"}
+    """Uploads avatar to Cloudinary for Render persistence."""
+    temp_dir = "data/tmp"
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_path = os.path.join(temp_dir, f"avatar_{uuid.uuid4()}_{file.filename}")
+    
+    try:
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        cloud_url = upload_file_to_cloud(temp_path, folder="avatars")
+        if not cloud_url:
+            raise HTTPException(status_code=500, detail="Failed to upload avatar to cloud storage")
+            
+        current_user.avatar_image = cloud_url
+        db.add(current_user)
+        db.commit()
+        return {"avatar_url": cloud_url}
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 @router.put("/profile/password")
 def update_password(

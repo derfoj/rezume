@@ -13,8 +13,9 @@ from src.agents.generator import GeneratorAgent
 from src.core.knowledge_base import get_profile_from_db, Profile
 from src.api.auth import get_current_user
 from src.models.user import User
+from src.models.usage import UsageLog # New import for logging
 from src.config.constants import TEMPLATES_DIR
-from src.core.orchestration import _rank_skills_by_relevance # Réintégration de la fonction de base
+from src.core.orchestration import _rank_skills_by_relevance
 import json
 import urllib.parse
 from pathlib import Path
@@ -47,7 +48,7 @@ def _profile_to_dict(profile: Profile) -> Dict[str, Any]:
     }
 
 @router.get("/templates")
-def get_templates():
+def get_templates(current_user: User = Depends(get_current_user)):
     metadata_path = TEMPLATES_DIR / "metadata.json"
     if metadata_path.exists():
         with open(metadata_path, 'r', encoding='utf-8') as f:
@@ -60,19 +61,28 @@ async def generate_cv_endpoint(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Prepare usage log
+    log_entry = UsageLog(
+        user_id=current_user.id,
+        action="cv_generation",
+        provider=current_user.llm_provider or "openai",
+        model=current_user.llm_model or "gpt-4o-mini",
+        status="pending"
+    )
+    db.add(log_entry)
+    db.commit()
+
     try:
         # 1. Charger le profil utilisateur
         user_profile = get_profile_from_db(db, user_id=current_user.id)
         
-        # 2. APPLICATION DU TRI INTELLIGENT (Base de la plateforme)
-        # Si une offre d'emploi est fournie, on trie les compétences par pertinence
+        # 2. APPLICATION DU TRI INTELLIGENT
         if request.job_offer_text and user_profile.skills:
             try:
-                logger.info("Tri intelligent des compétences en cours...")
                 relevant_skills = _rank_skills_by_relevance(user_profile.skills, request.job_offer_text, top_n=15)
                 user_profile.skills = relevant_skills
             except Exception as e:
-                logger.warning(f"Le tri intelligent a échoué ({e}), utilisation de l'ordre par défaut.")
+                logger.warning(f"Le tri intelligent a échoué ({e})")
         
         # 3. Configurer l'agent de génération
         generator = GeneratorAgent(
@@ -82,15 +92,16 @@ async def generate_cv_endpoint(
         )
         
         # 4. Générer le CV
-        # On convertit le profil en dict sécurisé pour l'IA
-        profile_dict = _profile_to_dict(user_profile)
-        
         pdf_path, tex_path = generator.generate_cv_from_llm(
-            user_profile=profile_dict,
+            user_profile=_profile_to_dict(user_profile),
             experiences=request.experiences,
             template_name=current_user.selected_template or "modern"
         )
         
+        # Mark success in log
+        log_entry.status = "success"
+        db.commit()
+
         # 5. Retourner le fichier
         return FileResponse(
             path=pdf_path,
@@ -100,5 +111,8 @@ async def generate_cv_endpoint(
         )
         
     except Exception as e:
+        # Mark error in log
+        log_entry.status = "error"
+        db.commit()
         logger.error(f"Échec de la génération du CV : {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erreur interne lors de la génération : {str(e)}")

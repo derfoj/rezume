@@ -19,7 +19,7 @@ async def get_current_user(request: Request, db: Session = Depends(get_db), toke
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    # If no token in Authorization header, check cookies (fallback)
+    # 1. If no token in Authorization header, check cookies (fallback)
     if not token:
         token = request.cookies.get("access_token")
         if token and token.startswith("Bearer "):
@@ -40,6 +40,14 @@ async def get_current_user(request: Request, db: Session = Depends(get_db), toke
     if user is None:
         raise credentials_exception
     return user
+
+async def get_admin_user(current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The user does not have enough privileges"
+        )
+    return current_user
 
 class UserCreate(BaseModel):
     email: str
@@ -63,7 +71,8 @@ def register(response: Response, user: UserCreate, db: Session = Depends(get_db)
         email=user.email, 
         hashed_password=hashed_password, 
         full_name=user.full_name, 
-        title=user.title or "Étudiant"
+        title=user.title or "Étudiant",
+        role="user" # Default role
     )
     db.add(new_user)
     db.commit()
@@ -105,9 +114,14 @@ def login(response: Response, user: UserLogin, db: Session = Depends(get_db)):
         samesite="none",
         secure=True
     )
-    return {"message": "Login successful", "access_token": access_token, "token_type": "bearer"}
+    return {"message": "Login successful", "access_token": access_token, "token_type": "bearer", "role": db_user.role}
 
 @router.post("/logout")
 def logout(response: Response):
     response.delete_cookie("access_token")
     return {"message": "Logged out successfully"}
+
+@router.get("/users", dependencies=[Depends(get_admin_user)])
+def list_users(db: Session = Depends(get_db)):
+    users = db.query(User).all()
+    return [{"id": u.id, "email": u.email, "full_name": u.full_name, "role": u.role} for u in users]

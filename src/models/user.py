@@ -21,6 +21,7 @@ class User(Base):
     search_status = Column(String, default="listening") # listening, active, closed
     llm_provider = Column(String, default="openai") # openai, anthropic, gemini
     llm_model = Column(String, default="gpt-4o-mini")
+    role = Column(String, default="user") # 'user' or 'admin'
     
     # We will add relationships later when profile.py is ready
     # experiences = relationship("Experience", back_populates="owner")
