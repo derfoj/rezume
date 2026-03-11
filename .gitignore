@@ -2,6 +2,7 @@
 .rezume/
 .venv/
 .env
+.env.production
 
 #configuration vs code
 GEMINI.md

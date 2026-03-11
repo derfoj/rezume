@@ -21,7 +21,9 @@ export const AuthProvider = ({ children }) => {
         return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     });
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    // Use relative path ONLY. Vercel's rewrite handles the mapping to Render.
+    // This hides your backend URL from Control+U and index.js
+    const API_URL = ''; 
 
     const originalFetchRef = useRef(window.fetch);
 

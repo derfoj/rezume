@@ -86,6 +86,10 @@ app.include_router(admin_api.router, prefix="/api/admin", tags=["Admin"])
 # --- Root & Health ---
 @app.get("/")
 def health_check():
+    """Minimal health check for production, detailed for dev."""
+    if ENV == "prod":
+        return {"status": "Online"}
+    
     from src.core.database import DATABASE_URL
     db_type = "PostgreSQL (Neon)" if "postgresql" in DATABASE_URL else "SQLite"
     return {
