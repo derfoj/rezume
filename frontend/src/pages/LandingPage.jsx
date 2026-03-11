@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap, CheckCircle, Shield, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -6,6 +6,14 @@ import { useAuth } from '../context/AuthContext';
 export default function LandingPage() {
     const navigate = useNavigate();
     const { theme, toggleTheme } = useAuth();
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+    // Ghost Ping to wake up Render Backend silently
+    useEffect(() => {
+        fetch(API_URL).catch(() => {
+            // Silence errors, we just want to trigger the wake-up
+        });
+    }, [API_URL]);
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-transparent transition-colors duration-500 flex flex-col relative z-10">
