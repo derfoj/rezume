@@ -24,10 +24,6 @@ from src.core.cv_validator import validate_cv
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# In-memory storage for job status (for faster polling than DB)
-# In production with multiple workers, you'd use Redis, but for Render Free -w 1, this works perfectly.
-jobs_status = {}
-
 def _profile_to_dict(profile: Profile) -> Dict[str, Any]:
     def to_dict(obj):
         return obj.__dict__ if hasattr(obj, "__dict__") else str(obj)
@@ -43,24 +39,24 @@ def _profile_to_dict(profile: Profile) -> Dict[str, Any]:
 
 def background_generate_cv(job_id: str, request: CVGenerationRequest, user_id: int):
     """
-    Worker function running in background to handle heavy LLM + LaTeX tasks.
+    Worker function using DB for persistence. Survival mode for Render Free.
     """
     db = SessionLocal()
     try:
-        jobs_status[job_id] = {"status": "processing", "progress": 20}
-        
-        current_user = db.query(User).filter(User.id == user_id).first()
+        # Update progress in DB (using model column instead of in-memory)
+        log_entry = db.query(UsageLog).filter(UsageLog.id == int(job_id)).first()
+        if not log_entry: return
+
         user_profile = get_profile_from_db(db, user_id=user_id)
+        current_user = db.query(User).filter(User.id == user_id).first()
         
         # 1. Ranking
         if request.job_offer_text and user_profile.skills:
-            jobs_status[job_id]["progress"] = 40
             try:
                 user_profile.skills = _rank_skills_by_relevance(user_profile.skills, request.job_offer_text, top_n=15)
             except: pass
         
         # 2. Generation
-        jobs_status[job_id]["progress"] = 60
         generator = GeneratorAgent(
             provider=current_user.llm_provider,
             model=current_user.llm_model,
@@ -73,35 +69,17 @@ def background_generate_cv(job_id: str, request: CVGenerationRequest, user_id: i
             template_name=current_user.selected_template or "modern"
         )
         
-        # 3. Validation
-        jobs_status[job_id]["progress"] = 90
-        validation = validate_cv(tex_path)
-        if not validation["valid"]:
-            # One retry if needed
-            pdf_path, tex_path = generator.generate_cv_from_llm(
-                user_profile=_profile_to_dict(user_profile),
-                experiences=request.experiences,
-                template_name=current_user.selected_template or "modern",
-                feedback="RÉDUIRE LA LONGUEUR : Le CV dépasse une page."
-            )
-
-        # Mark as finished
-        jobs_status[job_id] = {
-            "status": "completed", 
-            "progress": 100, 
-            "pdf_path": pdf_path,
-            "generation_id": Path(pdf_path).parent.name
-        }
-        
-        # Log success
-        db.add(UsageLog(user_id=user_id, action="cv_generation", status="success"))
+        # 3. Finalize
+        log_entry.status = "success"
+        log_entry.model = pdf_path # Temporary hijack model column to store path
         db.commit()
 
     except Exception as e:
         logger.error(f"Background Generation Failed: {e}")
-        jobs_status[job_id] = {"status": "failed", "error": str(e)}
-        db.add(UsageLog(user_id=user_id, action="cv_generation", status="error"))
-        db.commit()
+        log_entry = db.query(UsageLog).filter(UsageLog.id == int(job_id)).first()
+        if log_entry:
+            log_entry.status = "error"
+            db.commit()
     finally:
         db.close()
 
@@ -109,33 +87,38 @@ def background_generate_cv(job_id: str, request: CVGenerationRequest, user_id: i
 async def generate_cv_endpoint(
     request: CVGenerationRequest, 
     background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Starts the generation process and returns a job_id immediately."""
-    job_id = str(uuid.uuid4())
-    jobs_status[job_id] = {"status": "pending", "progress": 0}
+    # Create persistent DB log
+    log_entry = UsageLog(
+        user_id=current_user.id,
+        action="cv_generation",
+        status="processing"
+    )
+    db.add(log_entry)
+    db.commit()
+    db.refresh(log_entry)
     
-    background_tasks.add_task(background_generate_cv, job_id, request, current_user.id)
+    background_tasks.add_task(background_generate_cv, str(log_entry.id), request, current_user.id)
     
-    return {"job_id": job_id, "message": "Génération lancée en arrière-plan."}
+    return {"job_id": str(log_entry.id), "message": "Génération lancée."}
 
 @router.get("/status/{job_id}")
-async def get_job_status(job_id: str):
-    """Endpoint for the frontend to poll status."""
-    if job_id not in jobs_status:
-        raise HTTPException(status_code=404, detail="Job non trouvé.")
-    return jobs_status[job_id]
+async def get_job_status(job_id: str, db: Session = Depends(get_db)):
+    log = db.query(UsageLog).filter(UsageLog.id == int(job_id)).first()
+    if not log:
+        raise HTTPException(status_code=404, detail="Inconnu")
+    return {"status": log.status, "progress": 100 if log.status == "success" else 50}
 
 @router.get("/download/{job_id}")
-async def download_cv(job_id: str):
-    """Endpoint to download the final file once completed."""
-    job = jobs_status.get(job_id)
-    if not job or job["status"] != "completed":
-        raise HTTPException(status_code=400, detail="Fichier non prêt.")
+async def download_cv(job_id: str, db: Session = Depends(get_db)):
+    log = db.query(UsageLog).filter(UsageLog.id == int(job_id)).first()
+    if not log or log.status != "success":
+        raise HTTPException(status_code=400, detail="Non prêt")
     
     return FileResponse(
-        path=job["pdf_path"],
+        path=log.model, # Path stored during generation
         filename="reZume_CV.pdf",
-        media_type='application/pdf',
-        headers={"X-Generation-ID": job["generation_id"]}
+        media_type='application/pdf'
     )

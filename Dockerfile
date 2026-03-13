@@ -6,13 +6,13 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV WEB_CONCURRENCY=1
-ENV ENV_STATE=prod
+# Default to dev, can be overridden to 'prod' in docker-compose or render
+ENV ENV_STATE=dev 
 
 # Set the working directory
 WORKDIR /app
 
 # Install only essential system dependencies
-# We keep minimal texlive for basic font support, but rely on API for heavy compilation
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
@@ -30,8 +30,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application
 COPY . .
 
-# Ensure outputs directory exists
+# Ensure necessary directories exist
 RUN mkdir -p outputs/generated_cvs data/img/uploads
+
+# Persistence Note: 
+# To persist the database, mount a volume to /app/data or use a Postgres URL.
+# Example: docker run -v ./data:/app/data -e DATABASE_URL=sqlite:////app/data/rezume.db ...
 
 # Expose port (Render standard)
 EXPOSE 10000

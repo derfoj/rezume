@@ -12,7 +12,10 @@ export default function CVBuilder() {
   const { user, profileData, lang, token } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
-  const t = translations[lang].builder;
+
+  // Safety check for translations
+  const currentLang = lang || 'fr';
+  const t = translations[currentLang]?.builder;
 
   const [jobOffer, setJobOffer] = useState("");
   const [isGenerating, setIsLoading] = useState(false);
@@ -58,7 +61,7 @@ export default function CVBuilder() {
     }
 
     return () => clearInterval(pollInterval);
-  }, [jobId, isGenerating, token]);
+  }, [jobId, isGenerating, token, API_URL, addToast]);
 
   const handleGenerate = async () => {
     if (isGenerating) return;
@@ -95,6 +98,8 @@ export default function CVBuilder() {
     if (!jobId) return;
     window.open(`${API_URL}/api/download/${jobId}?token=${token}`, '_blank');
   };
+
+  if (!t) return null; // Prevent crash if translations aren't loaded
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8 font-sans">

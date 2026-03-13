@@ -21,15 +21,25 @@ export const AuthProvider = ({ children }) => {
         return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     });
 
-    // Use relative path ONLY. Vercel's rewrite handles the mapping to Render.
-    // This hides your backend URL from Control+U and index.js
-    const API_URL = ''; 
+    // Automatically uses the VITE_API_URL from Vercel settings or localhost for dev
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'; 
+    
+    // Debug: Ensure we're hitting the right backend
+    if (import.meta.env.PROD) {
+        console.log("Production API URL:", API_URL);
+    }
 
     const originalFetchRef = useRef(window.fetch);
 
     useEffect(() => {
         window.fetch = async (...args) => {
             let [resource, config] = args;
+            
+            // Ensure resource is an absolute URL if it starts with /api
+            if (typeof resource === 'string' && resource.startsWith('/api')) {
+                resource = `${API_URL}${resource}`;
+            }
+            
             config = config ? { ...config } : {};
             
             // 1. Inject Credentials (Cookies) for environments that support them
@@ -66,7 +76,7 @@ export const AuthProvider = ({ children }) => {
 
                 if (response.status >= 500) {
                      const url = typeof resource === 'string' ? resource : resource?.url;
-                     console.error("Global Interceptor: Server Error (5xx)");
+                     console.error(`Global Interceptor: Server Error (${response.status}) at ${url}`);
                      
                      if (url && !url.includes('/api/auth/login')) {
                         setIsServerDown(true);
@@ -77,7 +87,7 @@ export const AuthProvider = ({ children }) => {
             } catch (error) {
                 const url = typeof resource === 'string' ? resource : resource?.url;
                 if (url && !url.includes('/api/profile/me') && !url.includes('/api/auth/login')) {
-                    console.error("Global Interceptor: Network Error", error);
+                    console.error(`Global Interceptor: Network Error at ${url}`, error);
                     setIsServerDown(true);
                 }
                 throw error;
@@ -87,7 +97,7 @@ export const AuthProvider = ({ children }) => {
         return () => {
             window.fetch = originalFetchRef.current;
         };
-    }, []);
+    }, [API_URL]); // Added dependency on API_URL
 
     const fetchUser = async () => {
         try {

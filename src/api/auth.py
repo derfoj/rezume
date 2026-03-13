@@ -80,6 +80,10 @@ def register(response: Response, user: UserCreate, db: Session = Depends(get_db)
     
     access_token = create_access_token(data={"sub": new_user.email})
     
+    # Determine cookie security based on environment
+    from os import getenv
+    is_prod = getenv("ENV_STATE", "dev") == "prod"
+    
     # Set cookie for traditional session support
     response.set_cookie(
         key="access_token",
@@ -87,8 +91,8 @@ def register(response: Response, user: UserCreate, db: Session = Depends(get_db)
         httponly=True,
         max_age=1800, 
         expires=1800,
-        samesite="none",
-        secure=True
+        samesite="none" if is_prod else "lax",
+        secure=is_prod
     )
     
     return {"access_token": access_token, "token_type": "bearer"}
@@ -105,14 +109,18 @@ def login(response: Response, user: UserLogin, db: Session = Depends(get_db)):
     
     access_token = create_access_token(data={"sub": db_user.email})
     
+    # Determine cookie security based on environment
+    from os import getenv
+    is_prod = getenv("ENV_STATE", "dev") == "prod"
+    
     response.set_cookie(
         key="access_token",
         value=f"Bearer {access_token}",
         httponly=True,
         max_age=1800,
         expires=1800,
-        samesite="none",
-        secure=True
+        samesite="none" if is_prod else "lax",
+        secure=is_prod
     )
     return {"message": "Login successful", "access_token": access_token, "token_type": "bearer", "role": db_user.role}
 
