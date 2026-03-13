@@ -62,7 +62,7 @@ export default function ExperienceForm({ onSave, onCancel, initialData, t }) {
         setIsOptimizing(true);
         
         try {
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const { API_URL } = require('../config/api');
             const res = await fetch(`${API_URL}/api/optimize-description`, {
                 method: 'POST',
                 headers: {

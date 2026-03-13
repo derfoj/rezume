@@ -189,18 +189,12 @@ def search_vector_store(
 
     # Check for dimension mismatch (e.g. old index vs new model)
     if index.d != query_embedding.shape[1]:
-        logger.warning(
+        logger.error(
             f"Dimension mismatch detected! Index: {index.d}, Query: {query_embedding.shape[1]}. "
-            f"Deleting stale index '{index_name}' to force rebuild on next request."
+            f"This might be due to a failed embedding API call returning a default vector. "
+            f"Please trigger a manual profile refresh if this persists."
         )
-        try:
-            if os.path.exists(index_path):
-                os.remove(index_path)
-            if os.path.exists(data_path):
-                os.remove(data_path)
-        except OSError as e:
-            logger.error(f"Failed to delete stale index files: {e}")
-        
+        # Avoid aggressively deleting the index as it might just be an API glitch
         return []
 
     # Search

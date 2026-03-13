@@ -65,7 +65,8 @@ async def memory_cleanup_middleware(request: Request, call_next):
     return response
 
 # --- Middleware CORS ---
-origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173")
+# In production, ALLOWED_ORIGINS should be a comma-separated list like "https://myfrontend.com"
+origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173")
 origins = [origin.strip() for origin in origins_str.split(",") if origin.strip()]
 
 app.add_middleware(

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def clean_unicode_for_latex(text: str) -> str:
     replacements = {
-        "ᵉ": r"\textsuperscript{e}", "’": "'", "…": "...", "–": "--", "—": "---",
+        "ᵉ": r"\textsuperscript{e}", "ʳ": "r", "’": "'", "…": "...", "–": "--", "—": "---",
         "€": r"\euro{}", "«": r"\guillemotleft{}", "»": r"\guillemotright{}"
     }
     for char, replacement in replacements.items():
@@ -25,12 +25,19 @@ def clean_unicode_for_latex(text: str) -> str:
 
 def escape_latex_special_chars(text: str) -> str:
     if not isinstance(text, str): return text
+    
+    # We first replace backslashes with a unique, temporary string
+    # to avoid escaping the backslashes we are about to add.
+    text = text.replace("\\", "TEMPORARYBACKSLASHHOLDER")
+    
     chars = {
-        "\\": r"\textbackslash{}", "&": r"\&", "%": r"\%", "$": r"\$", "#": r"\#",
+        "&": r"\&", "%": r"\%", "$": r"\$", "#": r"\#",
         "_": r"\_", "{": r"\{", "}": r"\}", "~": r"\textasciitilde{}", "^": r"\textasciicircum{}",
     }
     for char, escaped in chars.items():
         text = text.replace(char, escaped)
+        
+    text = text.replace("TEMPORARYBACKSLASHHOLDER", r"\textbackslash{}")
     return text
 
 def sanitize_data_recursive(data):
@@ -146,6 +153,7 @@ class GeneratorAgent:
             pass
 
         # 2. Fallback API Externe (Si local échoue ou absent)
+        api_error_message = None
         if not success:
             try:
                 import requests
@@ -154,11 +162,17 @@ class GeneratorAgent:
                 if res.status_code == 200:
                     pdf_path.write_bytes(res.content)
                     success = True
+                else:
+                    api_error_message = f"LatexOnline API Error: Status {res.status_code}. Content: {res.text[:200]}"
+                    logger.error(api_error_message)
             except Exception as e:
-                logger.error(f"LatexOnline API Error: {e}")
+                api_error_message = f"LatexOnline API Exception: {e}"
+                logger.error(api_error_message)
 
         if not success:
-            raise RuntimeError("La compilation du PDF a échoué. Vérifiez la structure de vos données.")
+            error_details = api_error_message if api_error_message else "Erreur locale Inconnue"
+            logger.error(f"Echec final de la compilation. Détails: {error_details}")
+            raise RuntimeError(f"La compilation du PDF a échoué. L'API LaTeX a retourné une erreur ou pdflatex est manquant. Détails: {error_details}")
         
         gc.collect()
         return str(pdf_path), str(tex_path)

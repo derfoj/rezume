@@ -24,6 +24,21 @@ from src.core.cv_validator import validate_cv
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# --- ENDPOINTS ---
+
+@router.get("/templates")
+async def get_templates():
+    """
+    Returns the list of available CV templates.
+    """
+    templates = [
+        {"id": "modern", "name": "Moderne", "description": "Design épuré et professionnel."},
+        {"id": "classic", "name": "Classique", "description": "Structure traditionnelle et efficace."},
+        {"id": "photo_header", "name": "Avec Photo", "description": "Mise en avant de votre profil avec photo."}
+    ]
+    return templates
+
+
 def _profile_to_dict(profile: Profile) -> Dict[str, Any]:
     def to_dict(obj):
         return obj.__dict__ if hasattr(obj, "__dict__") else str(obj)

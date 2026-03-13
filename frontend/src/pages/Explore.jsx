@@ -10,7 +10,7 @@ export default function Explore() {
     const { addToast } = useToast();
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const { API_URL } = require('../config/api');
 
     useEffect(() => {
         fetchTemplates();

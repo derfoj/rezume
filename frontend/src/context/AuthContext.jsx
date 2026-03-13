@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
     });
 
     // Automatically uses the VITE_API_URL from Vercel settings or localhost for dev
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'; 
+    const { API_URL } = require('../config/api'); 
     
     // Debug: Ensure we're hitting the right backend
     if (import.meta.env.PROD) {

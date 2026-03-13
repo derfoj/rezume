@@ -24,7 +24,7 @@ export default function CVBuilder() {
   const [statusMessage, setStatusMessage] = useState("");
   const [pdfReady, setPdfReady] = useState(false);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const { API_URL } = require('../config/api');
 
   // --- Background Generation Logic (Polling) ---
   useEffect(() => {
