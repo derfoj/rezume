@@ -132,8 +132,14 @@ async def download_cv(job_id: str, inline: bool = False, db: Session = Depends(g
     if not log or log.status != "success":
         raise HTTPException(status_code=400, detail="Non prêt")
     
+    headers = {}
+    if inline:
+        # 'inline' tells the browser to try and show the file inside the page
+        headers["Content-Disposition"] = "inline"
+    
     return FileResponse(
-        path=log.model, # Path stored during generation
+        path=log.model, 
         filename="reZume_CV.pdf" if not inline else None,
-        media_type='application/pdf'
+        media_type='application/pdf',
+        headers=headers
     )

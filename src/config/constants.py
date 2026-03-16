@@ -14,5 +14,6 @@ EMBEDDINGS_DIR = ROOT_DIR / "data" / "embeddings"
 JOB_OFFERS_DIR = ROOT_DIR / "data" / "exemples_offres" / "exemple_offre.txt"
 GENERATED_CVS_DIR = ROOT_DIR / "outputs" / "generated_cvs"
 TEMPLATES_DIR = ROOT_DIR / "src" / "templates"
+CV_TEMPLATE_PATH=ROOT_DIR /"src"/"templates"
 
 MODEL_NAME = "text-embedding-3-small"

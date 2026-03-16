@@ -169,6 +169,7 @@ export default function CVBuilderApp() {
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [jobId, setJobId] = useState(null);
+  const [downloadUrl, setDownloadUrl] = useState(null);
 
   const [score, setScore] = useState(0);
   const [logs, setLogs] = useState(INITIAL_LOGS);
@@ -227,7 +228,7 @@ export default function CVBuilderApp() {
                 const link = document.createElement('a');
                 link.href = finalUrl;
                 link.setAttribute('download', 'reZume_CV.pdf');
-                link.setAttribute('target', '_blank');
+                link.setAttribute('target', '_blank'); // Ensures it opens in a new tab
                 document.body.appendChild(link);
                 link.click();
                 link.remove();
