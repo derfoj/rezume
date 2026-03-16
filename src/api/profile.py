@@ -16,6 +16,32 @@ import shutil
 import uuid
 import logging
 
+import time
+from threading import Lock
+
+# Locks to ensure tasks run sequentially per user
+_user_locks = {}
+_locks_mutex = Lock()
+
+def debounced_recalculate(user_id: int):
+    """
+    Processes updates one by one (séquentiellement) for a specific user.
+    Includes a small delay to batch multiple rapid changes.
+    """
+    # 1. Get or create a lock for this specific user
+    with _locks_mutex:
+        if user_id not in _user_locks:
+            _user_locks[user_id] = Lock()
+        user_lock = _user_locks[user_id]
+
+    # 2. Wait for the turn (à tour de rôle)
+    with user_lock:
+        # Small wait to allow other rapid-fire DB commits to finish
+        # and be captured in a single embedding run if possible.
+        time.sleep(2) 
+        logger.info(f"Starting sequential recalc for user {user_id}...")
+        recalculate_user_embeddings(user_id)
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -196,7 +222,7 @@ async def upload_cv(
             db.add(Language(user_id=current_user.id, name=lang.get("name"), level=lang.get("level")))
 
         db.commit()
-        background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+        background_tasks.add_task(debounced_recalculate, current_user.id)
         return {"message": "CV successfully imported", "data": extracted_data}
 
     except Exception as e:
@@ -292,7 +318,7 @@ def create_experience(
     db.add(db_exp)
     db.commit()
     db.refresh(db_exp)
-    background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+    background_tasks.add_task(debounced_recalculate, current_user.id)
     return db_exp
 
 @router.put("/profile/experiences/{exp_id}", response_model=ExperienceResponse)
@@ -308,7 +334,7 @@ def update_experience(
     for key, value in experience.model_dump().items(): setattr(db_exp, key, value)
     db.commit()
     db.refresh(db_exp)
-    background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+    background_tasks.add_task(debounced_recalculate, current_user.id)
     return db_exp
 
 @router.delete("/profile/experiences/{exp_id}")
@@ -317,7 +343,7 @@ def delete_experience(exp_id: int, background_tasks: BackgroundTasks, current_us
     if not db_exp: raise HTTPException(status_code=404, detail="Not found")
     db.delete(db_exp)
     db.commit()
-    background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+    background_tasks.add_task(debounced_recalculate, current_user.id)
     return {"message": "Deleted"}
 
 # --- Education ---
@@ -331,7 +357,7 @@ def create_education(education: EducationCreate, background_tasks: BackgroundTas
     db.add(db_edu)
     db.commit()
     db.refresh(db_edu)
-    background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+    background_tasks.add_task(debounced_recalculate, current_user.id)
     return db_edu
 
 @router.put("/profile/education/{edu_id}", response_model=EducationResponse)
@@ -341,7 +367,7 @@ def update_education(edu_id: int, education: EducationCreate, background_tasks: 
     for key, value in education.model_dump().items(): setattr(db_edu, key, value)
     db.commit()
     db.refresh(db_edu)
-    background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+    background_tasks.add_task(debounced_recalculate, current_user.id)
     return db_edu
 
 @router.delete("/profile/education/{edu_id}")
@@ -350,7 +376,7 @@ def delete_education(edu_id: int, background_tasks: BackgroundTasks, current_use
     if not db_edu: raise HTTPException(status_code=404, detail="Not found")
     db.delete(db_edu)
     db.commit()
-    background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+    background_tasks.add_task(debounced_recalculate, current_user.id)
     return {"message": "Deleted"}
 
 # --- Skills ---
@@ -364,7 +390,7 @@ def create_skill(skill: SkillCreate, background_tasks: BackgroundTasks, current_
     db.add(db_skill)
     db.commit()
     db.refresh(db_skill)
-    background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+    background_tasks.add_task(debounced_recalculate, current_user.id)
     return db_skill
 
 @router.put("/profile/skills/{skill_id}", response_model=SkillResponse)
@@ -374,7 +400,7 @@ def update_skill(skill_id: int, skill: SkillCreate, background_tasks: Background
     for key, value in skill.model_dump().items(): setattr(db_skill, key, value)
     db.commit()
     db.refresh(db_skill)
-    background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+    background_tasks.add_task(debounced_recalculate, current_user.id)
     return db_skill
 
 @router.delete("/profile/skills/{skill_id}")
@@ -383,7 +409,7 @@ def delete_skill(skill_id: int, background_tasks: BackgroundTasks, current_user:
     if not db_skill: raise HTTPException(status_code=404, detail="Not found")
     db.delete(db_skill)
     db.commit()
-    background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+    background_tasks.add_task(debounced_recalculate, current_user.id)
     return {"message": "Deleted"}
 
 # --- Languages ---
@@ -397,7 +423,7 @@ def create_language(language: LanguageCreate, background_tasks: BackgroundTasks,
     db.add(db_lang)
     db.commit()
     db.refresh(db_lang)
-    background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+    background_tasks.add_task(debounced_recalculate, current_user.id)
     return db_lang
 
 @router.put("/profile/languages/{lang_id}", response_model=LanguageResponse)
@@ -407,7 +433,7 @@ def update_language(lang_id: int, language: LanguageCreate, background_tasks: Ba
     for key, value in language.model_dump().items(): setattr(db_lang, key, value)
     db.commit()
     db.refresh(db_lang)
-    background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+    background_tasks.add_task(debounced_recalculate, current_user.id)
     return db_lang
 
 @router.delete("/profile/languages/{lang_id}")
@@ -416,5 +442,5 @@ def delete_language(lang_id: int, background_tasks: BackgroundTasks, current_use
     if not db_lang: raise HTTPException(status_code=404, detail="Not found")
     db.delete(db_lang)
     db.commit()
-    background_tasks.add_task(recalculate_user_embeddings, current_user.id, db)
+    background_tasks.add_task(debounced_recalculate, current_user.id)
     return {"message": "Deleted"}

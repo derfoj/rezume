@@ -24,6 +24,10 @@ async def get_current_user(request: Request, db: Session = Depends(get_db), toke
         token = request.cookies.get("access_token")
         if token and token.startswith("Bearer "):
             token = token.replace("Bearer ", "", 1)
+            
+    # 2. Check query parameters (fallback for window.open/downloads)
+    if not token:
+        token = request.query_params.get("token")
 
     if not token:
         raise credentials_exception

@@ -79,16 +79,19 @@ export default function LoginPage() {
                         <form onSubmit={handleSubmit} className="space-y-4">
                             {!isLogin && (
                                 <div className="space-y-1">
-                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Nom complet</label>
+                                    <label htmlFor="fullName" className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Nom complet</label>
                                     <div className="relative">
                                         <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                         <input
+                                            id="fullName"
+                                            name="fullName"
                                             type="text"
                                             value={fullName}
                                             onChange={(e) => setFullName(e.target.value)}
                                             className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium text-slate-700 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                             placeholder="John Doe"
                                             required={!isLogin}
+                                            autoComplete="name"
                                         />
                                     </div>
                                 </div>
@@ -96,51 +99,61 @@ export default function LoginPage() {
 
                             {!isLogin && (
                                 <div className="space-y-1">
-                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Études / Filière</label>
+                                    <label htmlFor="title" className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Études / Filière</label>
                                     <div className="relative">
                                         <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                         <input
+                                            id="title"
+                                            name="title"
                                             type="text"
                                             value={title}
                                             onChange={(e) => setTitle(e.target.value)}
                                             className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium text-slate-700 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                             placeholder="Master Data Science"
+                                            autoComplete="organization-title"
                                         />
                                     </div>
                                 </div>
                             )}
 
                             <div className="space-y-1">
-                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Email</label>
+                                <label htmlFor="email" className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Email</label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                     <input
+                                        id="email"
+                                        name="email"
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium text-slate-700 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                         placeholder="john@example.com"
                                         required
+                                        autoComplete="email"
                                     />
                                 </div>
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Mot de passe</label>
+                                <label htmlFor="password" className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Mot de passe</label>
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                     <input
+                                        id="password"
+                                        name="password"
                                         type={showPassword ? "text" : "password"}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         className="w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium text-slate-700 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                         placeholder="••••••••"
                                         required
+                                        autoComplete={isLogin ? "current-password" : "new-password"}
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
                                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                                        aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
                                     >
                                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                     </button>
@@ -172,4 +185,3 @@ export default function LoginPage() {
         </div>
     );
 }
-// End of LoginPage

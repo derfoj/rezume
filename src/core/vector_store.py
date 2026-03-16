@@ -86,11 +86,17 @@ def build_vector_store(documents: List[Dict[str, Any]], index_name: str = "kb_in
         
     logger.info(f"Index built and saved to {index_path}")
 
-def recalculate_user_embeddings(user_id: int, db: Session):
+def recalculate_user_embeddings(user_id: int, db: Session = None):
     """
     Fetches the user's full profile (Experiences, Skills, etc.), 
     formats them into documents, and rebuilds their personal vector index.
     """
+    should_close = False
+    if db is None:
+        from src.core.database import SessionLocal
+        db = SessionLocal()
+        should_close = True
+
     try:
         logger.info(f"Recalculating embeddings for User {user_id}...")
         profile = get_profile_from_db(db, user_id)
@@ -157,6 +163,9 @@ def recalculate_user_embeddings(user_id: int, db: Session):
         
     except Exception as e:
         logger.error(f"Failed to recalculate embeddings for User {user_id}: {e}")
+    finally:
+        if should_close and db:
+            db.close()
 
 def search_vector_store(
     query_text: str, 

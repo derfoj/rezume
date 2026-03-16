@@ -3,8 +3,8 @@ import os
 import json
 import subprocess
 import uuid
-import gc
 import logging
+import requests
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -15,164 +15,233 @@ from src.config.constants import TEMPLATES_DIR
 logger = logging.getLogger(__name__)
 
 def clean_unicode_for_latex(text: str) -> str:
+    """
+    Replaces common Unicode characters that break pdflatex with LaTeX equivalents.
+    """
     replacements = {
-        "ᵉ": r"\textsuperscript{e}", "ʳ": "r", "’": "'", "…": "...", "–": "--", "—": "---",
-        "€": r"\euro{}", "«": r"\guillemotleft{}", "»": r"\guillemotright{}"
+        "ᵉ": r"\textsuperscript{e}",
+        "¹": r"\textsuperscript{1}",
+        "²": r"\textsuperscript{2}",
+        "³": r"\textsuperscript{3}",
+        "’": "'",
+        "…": "...",
+        "–": "--",
+        "—": "---",
+        "“": "``",
+        "”": "''",
+        "«": "\\guillemotleft{}",
+        "»": "\\guillemotright{}",
+        "€": "\\euro{}",
+        "oe": "\\oe{}",
+        "OE": "\\OE{}",
+        "æ": "\\ae{}",
+        "Æ": "\\AE{}"
     }
     for char, replacement in replacements.items():
         text = text.replace(char, replacement)
     return text
 
 def escape_latex_special_chars(text: str) -> str:
-    if not isinstance(text, str): return text
-    
-    # We first replace backslashes with a unique, temporary string
-    # to avoid escaping the backslashes we are about to add.
-    text = text.replace("\\", "TEMPORARYBACKSLASHHOLDER")
-    
+    """
+    Escapes LaTeX special characters in a string to prevent injection or compilation errors.
+    """
+    if not isinstance(text, str):
+        return text
+
     chars = {
-        "&": r"\&", "%": r"\%", "$": r"\$", "#": r"\#",
-        "_": r"\_", "{": r"\{", "}": r"\}", "~": r"\textasciitilde{}", "^": r"\textasciicircum{}",
+        "\\": r"\textbackslash{}", # Must be first to avoid escaping escapes
+        "&": r"\&",
+        "%": r"\%",
+        "$": r"\$",
+        "#": r"\#",
+        "_": r"\_",
+        "{": r"\{",
+        "}": r"\}",
+        "~": r"\textasciitilde{}",
+        "^": r"\textasciicircum{}",
     }
+
+    # Simple replacement loop
     for char, escaped in chars.items():
         text = text.replace(char, escaped)
-        
-    text = text.replace("TEMPORARYBACKSLASHHOLDER", r"\textbackslash{}")
     return text
 
-def sanitize_data_recursive(data):
+def sanitize_data_recursive(data, skip_keys=None):
+    """Recursively sanitizes dictionary or list values."""
+    if skip_keys is None:
+        skip_keys = set()
+
     if isinstance(data, dict):
-        return {k: sanitize_data_recursive(v) for k, v in data.items()}
+        return {
+            k: (v if k in skip_keys else sanitize_data_recursive(v, skip_keys))
+            for k, v in data.items()
+        }
     elif isinstance(data, list):
-        return [sanitize_data_recursive(i) for i in data]
+        return [sanitize_data_recursive(i, skip_keys) for i in data]
     elif isinstance(data, str):
         return escape_latex_special_chars(data)
-    return data
+    else:
+        return data
 
 class GeneratorAgent:
+    """
+    An agent responsible for generating the final LaTeX CV by calling an LLM
+    with a complete context, then compiling the result to PDF.
+    """
     def __init__(self, provider: str = None, model: str = None, api_key: str = None):
         try:
             self.llm = get_llm(provider=provider, model=model, user_api_key=api_key)
-        except:
+            logger.info(f"✅ GeneratorAgent prêt ({provider or 'default'}/{model or 'default'}).")
+        except Exception as e:
             self.llm = None
+            logger.error(f"❌ Erreur lors de l'init du GeneratorAgent: {e}")
 
     def _clean_llm_output(self, latex_code: str) -> str:
+        """
+        Robustly extracts LaTeX code from LLM output.
+        """
         import re
         match = re.search(r"```(?:latex)?\s*(.*?)\s*```", latex_code, re.DOTALL | re.IGNORECASE)
         if match:
-            code = match.group(1).strip()
-            if code.startswith("\\documentclass"): return code
-        
-        start = latex_code.find("\\documentclass")
-        if start != -1:
-            latex_code = latex_code[start:]
-        
-        end = latex_code.find("\\end{document}")
-        if end != -1:
-            latex_code = latex_code[:end + 14]
-            
+            clean_code = match.group(1).strip()
+            if clean_code.startswith("\\documentclass"):
+                return clean_code
+
+        start_idx = latex_code.find("\\documentclass")
+        if start_idx != -1:
+            latex_code = latex_code[start_idx:]
+
+        end_marker = "\\end{document}"
+        end_idx = latex_code.find(end_marker)
+        if end_idx != -1:
+            latex_code = latex_code[:end_idx + len(end_marker)]
+
         return latex_code.strip()
 
-    def generate_cv_from_llm(self, user_profile: Dict[str, Any], experiences: List[Dict[str, Any]], template_name: str = "modern", feedback: str = None, session_dir: Path = None) -> (str, str):
-        if not self.llm:
-            raise RuntimeError("IA non disponible.")
+    def compile_latex_online(self, latex_code: str, output_path: Path) -> bool:
+        """
+        Fallback compilation using LatexOnline API.
+        URL format: https://latexonline.cc/compile?text=YOUR_CODE
+        """
+        import urllib.parse
+        base_url = os.getenv("LATEX_ONLINE_URL", "https://latexonline.cc/compile")
+        logger.info(f"🌐 Tentative de compilation via {base_url} (GET)...")
+        try:
+            # For GET request, we need to encode the text
+            params = {'text': latex_code}
+            query_string = urllib.parse.urlencode(params)
+            full_url = f"{base_url}?{query_string}"
+            
+            response = requests.get(full_url, timeout=45)
+            if response.status_code == 200 and len(response.content) > 500: # Basic check for a real PDF
+                with open(output_path, "wb") as f:
+                    f.write(response.content)
+                return True
+            else:
+                logger.error(f"LatexOnline failed: Status {response.status_code}, Content-Length {len(response.content)}")
+                return False
+        except Exception as e:
+            logger.error(f"Error connecting to LatexOnline: {e}")
+            return False
 
-        # --- GESTION ROBUSTE DE LA PHOTO ---
-        photo_path = ""
-        if user_profile.get("photo_path"):
-            p = user_profile["photo_path"]
-            # Si c'est un ID d'avatar, on cherche dans les assets
+    def generate_cv_from_llm(self, user_profile: Dict[str, Any], experiences: List[Dict[str, Any]], template_name: str = "modern", feedback: str = None, session_id: str = None) -> (str, str): 
+        """
+        Generates a PDF CV.
+        """
+        if not self.llm:
+            raise RuntimeError("GeneratorAgent non initialisé.")
+
+        # Resolve photo_path (Keep logic from local_version)
+        if "photo_path" in user_profile and user_profile["photo_path"]:
+            photo_name = user_profile["photo_path"]
             avatar_map = {
-                "man_laptop": "avatar_man_laptop.png", 
+                "man_laptop": "avatar_man_laptop.png",
                 "woman_laptop": "avatar_woman_laptop.png",
                 "man_coffee": "avatar_man_coffee.png",
-                "woman_rocket": "avatar_woman_rocket.png"
+                "woman_rocket": "avatar_woman_rocket.png",
+                "marc_aurel": "the_marc_aurel.png",
+                "avatar_femme": "avatar_femme.png"
             }
-            photo_name = avatar_map.get(p, p)
-            
-            # Chemins possibles (Vercel/Render friendly)
-            root = Path(__file__).resolve().parent.parent.parent
+            if photo_name in avatar_map:
+                photo_name = avatar_map[photo_name]
+
             candidates = [
-                root / "frontend/src/assets" / photo_name,
-                root / "data/img" / photo_name,
-                root / "data/img/uploads" / photo_name.split('/')[-1] # Cas des uploads
+                Path("frontend/src/assets") / photo_name,
+                Path("data/img") / photo_name,
             ]
-            
+            resolved_path = None
             for cand in candidates:
                 if cand.exists():
-                    photo_path = str(cand).replace("\\", "/")
+                    resolved_path = cand.resolve()
                     break
-        
-        user_profile["photo_path"] = photo_path
-        # -----------------------------------
+            
+            if resolved_path:
+                user_profile["photo_path"] = str(resolved_path).replace("\\", "/")
+            else:
+                user_profile["photo_path"] = ""
 
-        safe_profile = sanitize_data_recursive(user_profile)
+        safe_profile = sanitize_data_recursive(user_profile, skip_keys={"photo_path"})
         safe_experiences = sanitize_data_recursive(experiences)
 
         template_path = TEMPLATES_DIR / f"{template_name}.tex"
-        if not template_path.exists(): template_path = TEMPLATES_DIR / "modern.tex"
-        cv_template = load_text(template_path)
-        
-        prompt_config = load_yaml("src/config/prompts/generator.yaml")
-        prompt = prompt_config['template'].replace("{{user_profile}}", json.dumps(safe_profile, ensure_ascii=False))\
-                                          .replace("{{selected_experiences}}", json.dumps(safe_experiences, ensure_ascii=False))\
-                                          .replace("{{cv_template}}", cv_template)\
-                                          .replace("{{verbosity_instruction}}", "Fais tenir sur une page.")
+        if not template_path.exists():
+            template_path = TEMPLATES_DIR / "modern.tex"
 
-        if feedback: prompt += f"\n\nCorrection : {feedback}"
+        cv_template_content = load_text(template_path)
+        prompt_template = load_yaml("src/config/prompts/generator.yaml")['template']
+
+        num_experiences = len(experiences)
+        if num_experiences <= 3:
+            verbosity_instruction = "HAUTE VERBOSITÉ REQUISE : étoffe chaque bullet point."
+        else:
+            verbosity_instruction = "OPTIMISATION 1 PAGE : sois concis pour les anciennes expériences."
+
+        final_prompt = prompt_template.replace(
+            "{{user_profile}}", json.dumps(safe_profile, indent=2, ensure_ascii=False)
+        ).replace(
+            "{{selected_experiences}}", json.dumps(safe_experiences, indent=2, ensure_ascii=False)
+        ).replace(
+            "{{cv_template}}", cv_template_content
+        ).replace(
+            "{{verbosity_instruction}}", verbosity_instruction
+        )
 
         try:
-            raw_output = self.llm.chat(prompt)
-            clean_latex = self._clean_llm_output(clean_unicode_for_latex(raw_output))
+            generated_latex_code = self.llm.chat(final_prompt)
+            generated_latex_code = clean_unicode_for_latex(generated_latex_code)
+            generated_latex_code = self._clean_llm_output(generated_latex_code)
         except Exception as e:
-            logger.error(f"LLM Chat Error: {e}")
-            raise RuntimeError("L'IA n'a pas pu générer le code LaTeX.")
+            raise RuntimeError(f"L'IA a échoué: {e}")
 
-        # Dossier de session
-        unique_id = uuid.uuid4()
-        base_name = f"rezume_llm_{unique_id}"
-        if not session_dir:
-            session_dir = Path(__file__).resolve().parent.parent.parent / "outputs/generated_cvs" / base_name
-        
-        session_dir = Path(session_dir)
-        os.makedirs(session_dir, exist_ok=True)
-        
-        tex_path = session_dir / f"{base_name}.tex"
-        pdf_path = session_dir / f"{base_name}.pdf"
-        tex_path.write_text(clean_latex, encoding="utf-8")
+        # Directory management
+        unique_id = session_id or str(uuid.uuid4())
+        session_dir = Path("outputs/generated_cvs") / unique_id
+        session_dir.mkdir(parents=True, exist_ok=True)
 
-        # Compilation
-        success = False
-        # 1. Tentative locale (uniquement si pdflatex est présent)
+        tex_path = session_dir / f"cv_{unique_id}.tex"
+        pdf_path = session_dir / f"cv_{unique_id}.pdf"
+
+        with open(tex_path, "w", encoding="utf-8") as f:
+            f.write(generated_latex_code)
+
+        # Compilation local vs online
+        compiled = False
         try:
-            res = subprocess.run(["pdflatex", "-version"], capture_output=True)
-            if res.returncode == 0:
-                subprocess.run(["pdflatex", "-interaction=nonstopmode", f"-output-directory={session_dir}", str(tex_path)], capture_output=True, timeout=30)
-                if pdf_path.exists(): success = True
-        except:
-            pass
+            # Check if pdflatex exists
+            subprocess.run(["pdflatex", "--version"], capture_output=True, check=True)
+            logger.info("🚀 Compilation locale avec pdflatex...")
+            cmd = ["pdflatex", "-interaction=nonstopmode", f"-output-directory={session_dir}", str(tex_path)]
+            subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if pdf_path.exists():
+                compiled = True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            logger.warning("⚠️ pdflatex non trouvé ou erreur. Passage en mode ONLINE.")
 
-        # 2. Fallback API Externe (Si local échoue ou absent)
-        api_error_message = None
-        if not success:
-            try:
-                import requests
-                # On utilise un timeout plus long pour les gros fichiers
-                res = requests.post("https://latexonline.cc/compile", data={"text": clean_latex}, timeout=60)
-                if res.status_code == 200:
-                    pdf_path.write_bytes(res.content)
-                    success = True
-                else:
-                    api_error_message = f"LatexOnline API Error: Status {res.status_code}. Content: {res.text[:200]}"
-                    logger.error(api_error_message)
-            except Exception as e:
-                api_error_message = f"LatexOnline API Exception: {e}"
-                logger.error(api_error_message)
+        if not compiled:
+            compiled = self.compile_latex_online(generated_latex_code, pdf_path)
 
-        if not success:
-            error_details = api_error_message if api_error_message else "Erreur locale Inconnue"
-            logger.error(f"Echec final de la compilation. Détails: {error_details}")
-            raise RuntimeError(f"La compilation du PDF a échoué. L'API LaTeX a retourné une erreur ou pdflatex est manquant. Détails: {error_details}")
-        
-        gc.collect()
+        if not compiled or not pdf_path.exists():
+            raise RuntimeError("La compilation LaTeX a échoué (Local et Online).")
+
         return str(pdf_path), str(tex_path)

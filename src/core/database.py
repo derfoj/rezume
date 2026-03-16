@@ -23,11 +23,16 @@ connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 
+from sqlalchemy.pool import QueuePool
+
 engine = create_engine(
     DATABASE_URL, 
     connect_args=connect_args,
     pool_pre_ping=True,
-    pool_recycle=300
+    pool_recycle=300,
+    pool_size=15,
+    max_overflow=25,
+    poolclass=QueuePool
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

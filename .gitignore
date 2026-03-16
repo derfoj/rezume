@@ -2,8 +2,6 @@
 .rezume/
 .venv/
 .env
-.env.production
-
 #configuration vs code
 GEMINI.md
 .vscode/
@@ -30,6 +28,8 @@ outputs/
 # convertisseur latex en python
 rezume_miktex/
 
+#gitignore
+*.gitignore
 
 #erreurs files
 erreur.txt

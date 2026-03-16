@@ -10,7 +10,7 @@ export default function Explore() {
     const { addToast } = useToast();
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
-    const { API_URL } = require('../config/api');
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
     useEffect(() => {
         fetchTemplates();
@@ -81,22 +81,24 @@ export default function Explore() {
                                     className={`group cursor-pointer bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border-2 transition-all duration-300 relative btn-interactive ${isSelected ? 'border-blue-600 shadow-xl ring-4 ring-blue-50 dark:ring-blue-900/30' : 'border-gray-100 dark:border-slate-700 hover:border-blue-300 hover:shadow-lg'}`}
                                 >
                                     {/* Preview Image or Placeholder */}
-                                    <div className="h-64 w-full relative overflow-hidden bg-slate-100 dark:bg-slate-900">
+                                    <div className="h-64 w-full relative overflow-hidden bg-slate-100 dark:bg-slate-900 border-b dark:border-slate-700">
                                         {tpl.preview ? (
                                             <img
                                                 src={`/templates/${tpl.preview}`}
                                                 alt={tpl.name}
-                                                className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-500"
+                                                className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500 relative z-10"
                                                 onError={(e) => {
-                                                    e.target.onerror = null;
-                                                    e.target.src = ""; // Clear src to show placeholder if image fails to load
-                                                    e.target.classList.add('hidden');
+                                                    e.target.style.display = 'none';
                                                 }}
                                             />
                                         ) : null}
 
                                         {/* Fallback Gradient (visible if no image or image fails) */}
-                                        <div className={`absolute inset-0 flex items-center justify-center text-4xl font-bold text-white uppercase tracking-widest -z-10 ${tpl.id === 'modern' ? 'bg-gradient-to-br from-blue-500 to-cyan-400' : 'bg-gradient-to-br from-indigo-500 to-purple-600'}`}>
+                                        <div className={`absolute inset-0 flex items-center justify-center text-3xl font-bold text-white uppercase tracking-widest z-0 ${
+                                            tpl.id === 'modern' ? 'bg-gradient-to-br from-blue-500 to-cyan-400' : 
+                                            tpl.id === 'photo_header' ? 'bg-gradient-to-br from-indigo-500 to-purple-600' :
+                                            'bg-gradient-to-br from-slate-400 to-slate-600'
+                                        }`}>
                                             {tpl.name.split(' ')[0]}
                                         </div>
                                     </div>

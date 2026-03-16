@@ -32,9 +32,9 @@ async def get_templates():
     Returns the list of available CV templates.
     """
     templates = [
-        {"id": "modern", "name": "Moderne", "description": "Design épuré et professionnel."},
-        {"id": "classic", "name": "Classique", "description": "Structure traditionnelle et efficace."},
-        {"id": "photo_header", "name": "Avec Photo", "description": "Mise en avant de votre profil avec photo."}
+        {"id": "modern", "name": "Moderne", "description": "Design épuré et professionnel.", "preview": "modern_preview.svg"},
+        {"id": "photo_header", "name": "Avec Photo", "description": "Mise en avant de votre profil avec photo.", "preview": "photo_preview.svg"},
+        {"id": "classic", "name": "Classique", "description": "Structure traditionnelle et efficace (sans photo).", "preview": "modern_preview.svg"} # Use modern as fallback if classic preview is missing
     ]
     return templates
 
@@ -127,13 +127,13 @@ async def get_job_status(job_id: str, db: Session = Depends(get_db)):
     return {"status": log.status, "progress": 100 if log.status == "success" else 50}
 
 @router.get("/download/{job_id}")
-async def download_cv(job_id: str, db: Session = Depends(get_db)):
+async def download_cv(job_id: str, inline: bool = False, db: Session = Depends(get_db)):
     log = db.query(UsageLog).filter(UsageLog.id == int(job_id)).first()
     if not log or log.status != "success":
         raise HTTPException(status_code=400, detail="Non prêt")
     
     return FileResponse(
         path=log.model, # Path stored during generation
-        filename="reZume_CV.pdf",
+        filename="reZume_CV.pdf" if not inline else None,
         media_type='application/pdf'
     )
