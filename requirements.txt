@@ -58,7 +58,7 @@ colorama==0.4.6
 loguru==0.7.2
 filetype==1.2.0
 typing-extensions==4.12.2
-pillow==12.1.1
+pillow==11.1.0
 
 # --- Tests & Quality ---
 pytest==8.3.3
