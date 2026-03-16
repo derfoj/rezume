@@ -7,11 +7,11 @@ pyyaml==6.0.1
 
 # --- LLM & AI Orchestration (Stable Stack 0.3) ---
 langchain==0.3.15
-langchain-core>=0.3.33
-langchain-openai>=0.3.3
-langchain-mistralai>=0.2.0
-langgraph>=1.0.10
-openai>=1.58.1
+langchain-core==0.3.29
+langchain-openai==0.3.0
+langchain-mistralai==0.2.0
+langgraph==0.2.60
+openai==1.58.1
 anthropic==0.34.2
 groq==0.11.0
 google-genai==0.4.0
