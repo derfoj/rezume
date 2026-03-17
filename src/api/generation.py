@@ -54,39 +54,60 @@ def _profile_to_dict(profile: Profile) -> Dict[str, Any]:
 
 def background_generate_cv(job_id: str, request: CVGenerationRequest, user_id: int):
     """
-    Worker function using DB for persistence. Survival mode for Render Free.
+    Worker function with retry logic for 1-page constraint.
     """
     db = SessionLocal()
     try:
-        # Update progress in DB (using model column instead of in-memory)
         log_entry = db.query(UsageLog).filter(UsageLog.id == int(job_id)).first()
         if not log_entry: return
 
         user_profile = get_profile_from_db(db, user_id=user_id)
         current_user = db.query(User).filter(User.id == user_id).first()
         
-        # 1. Ranking
+        # 1. Ranking skills
         if request.job_offer_text and user_profile.skills:
             try:
                 user_profile.skills = _rank_skills_by_relevance(user_profile.skills, request.job_offer_text, top_n=15)
             except: pass
         
-        # 2. Generation
         generator = GeneratorAgent(
             provider=current_user.llm_provider,
             model=current_user.llm_model,
             api_key=current_user.openai_api_key if current_user.llm_provider == "openai" else None
         )
         
-        pdf_path, tex_path = generator.generate_cv_from_llm(
-            user_profile=_profile_to_dict(user_profile),
-            experiences=request.experiences,
-            template_name=current_user.selected_template or "modern"
-        )
+        # Retry loop for 1-page constraint
+        max_retries = 2
+        pdf_path, tex_path = None, None
         
+        for attempt in range(max_retries):
+            logger.info(f"Generation attempt {attempt + 1} for Job {job_id}")
+            
+            # On second attempt, force extreme conciseness
+            feedback = None
+            if attempt > 0:
+                feedback = "Le CV précédent était trop long (plus d'une page). RESTE SUR UNE SEULE PAGE. Sois très concis, élimine le superflu."
+
+            pdf_path, tex_path = generator.generate_cv_from_llm(
+                user_profile=_profile_to_dict(user_profile),
+                experiences=request.experiences,
+                template_name=current_user.selected_template or "modern",
+                feedback=feedback
+            )
+            
+            # Validate page count
+            validation = validate_cv(tex_path)
+            if validation["valid"]:
+                logger.info(f"✅ CV validated (1 page) on attempt {attempt + 1}")
+                break
+            else:
+                logger.warning(f"⚠️ CV validation failed: {validation['warnings']}")
+                if attempt == max_retries - 1:
+                    raise RuntimeError(f"Impossible de générer un CV sur une seule page après {max_retries} tentatives.")
+
         # 3. Finalize
         log_entry.status = "success"
-        log_entry.model = pdf_path # Temporary hijack model column to store path
+        log_entry.model = pdf_path
         db.commit()
 
     except Exception as e:
@@ -96,7 +117,6 @@ def background_generate_cv(job_id: str, request: CVGenerationRequest, user_id: i
         log_entry = db.query(UsageLog).filter(UsageLog.id == int(job_id)).first()
         if log_entry:
             log_entry.status = "error"
-            # We use the model field to store a hint about the error for debugging
             log_entry.model = f"Error: {str(e)[:100]}"
             db.commit()
     finally:

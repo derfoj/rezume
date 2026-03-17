@@ -120,32 +120,42 @@ class GeneratorAgent:
 
     def compile_latex_online(self, latex_code: str, output_path: Path) -> bool:
         """
-        Fallback compilation using LatexOnline API.
-        Uses POST with files (multipart/form-data) as recommended for larger documents.
+        Fallback compilation using TexLive.net API (more stable than LatexOnline).
         """
-        base_url = os.getenv("LATEX_ONLINE_URL", "https://latexonline.cc/compile")
-        logger.info(f"🌐 Tentative de compilation via {base_url} (POST File)...")
+        api_url = "https://texlive.net/cgi-bin/latexcgi"
+        logger.info(f"🌐 Tentative de compilation via {api_url} (Fallback)...")
         try:
-            # Using multipart/form-data with 'file' key
-            # We also add force=true to avoid cached error pages
-            files = {'file': ('main.tex', latex_code, 'text/x-tex')}
-            params = {'force': 'true', 'command': 'pdflatex'}
+            # TexLive.net expects 'filecontents[]' and 'filename[]'
+            payload = {
+                'filecontents[]': latex_code,
+                'filename[]': 'main.tex',
+                'engine': 'pdflatex',
+                'return': 'pdf'
+            }
             
-            response = requests.post(base_url, files=files, params=params, timeout=60)
+            response = requests.post(api_url, data=payload, timeout=60)
             
-            if response.status_code == 200 and len(response.content) > 500: # Basic check for a real PDF
+            if response.status_code == 200 and response.headers.get('Content-Type') == 'application/pdf':
                 with open(output_path, "wb") as f:
                     f.write(response.content)
-                logger.info(f"✅ PDF généré avec succès via LatexOnline ({len(response.content)} bytes)")
+                logger.info(f"✅ PDF généré avec succès via TexLive.net ({len(response.content)} bytes)")
                 return True
-            else:
-                logger.error(f"LatexOnline failed: Status {response.status_code}, Content-Length {len(response.content)}")
-                # Log a snippet of the response for debugging (it might be a LaTeX error log)
-                if response.text:
-                    logger.error(f"Response snippet: {response.text[:500]}")
-                return False
+            
+            # If TexLive.net fails, try the old LatexOnline as a last resort
+            logger.warning("TexLive.net failed, trying LatexOnline as last resort...")
+            base_url = "https://latexonline.cc/compile"
+            files = {'file': ('main.tex', latex_code, 'text/x-tex')}
+            params = {'force': 'true', 'command': 'pdflatex'}
+            response = requests.post(base_url, files=files, params=params, timeout=60)
+            
+            if response.status_code == 200 and len(response.content) > 500:
+                with open(output_path, "wb") as f:
+                    f.write(response.content)
+                return True
+                
+            return False
         except Exception as e:
-            logger.error(f"Error connecting to LatexOnline: {e}")
+            logger.error(f"Online compilation error: {e}")
             return False
 
     def generate_cv_from_llm(self, user_profile: Dict[str, Any], experiences: List[Dict[str, Any]], template_name: str = "modern", feedback: str = None, session_id: str = None) -> (str, str): 
@@ -210,6 +220,9 @@ class GeneratorAgent:
             "{{verbosity_instruction}}", verbosity_instruction
         )
 
+        if feedback:
+            final_prompt = f"NOTE PRÉCÉDENTE : {feedback}\n\n" + final_prompt
+
         try:
             generated_latex_code = self.llm.chat(final_prompt)
             generated_latex_code = clean_unicode_for_latex(generated_latex_code)
@@ -228,24 +241,38 @@ class GeneratorAgent:
         with open(tex_path, "w", encoding="utf-8") as f:
             f.write(generated_latex_code)
 
-        # Compilation local vs online
+        # --- MULTI-ENGINE COMPILATION ---
         compiled = False
+        
+        # 1. Try Tectonic (Recommended for Docker/Production)
         try:
-            # Check if pdflatex exists
-            subprocess.run(["pdflatex", "--version"], capture_output=True, check=True)
-            logger.info("🚀 Compilation locale avec pdflatex...")
-            cmd = ["pdflatex", "-interaction=nonstopmode", f"-output-directory={session_dir}", str(tex_path)]
-            subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-            subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            subprocess.run(["tectonic", "--version"], capture_output=True, check=True)
+            logger.info("🚀 Compilation avec Tectonic...")
+            cmd = ["tectonic", "-o", str(session_dir), str(tex_path)]
+            subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             if pdf_path.exists():
                 compiled = True
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            logger.warning("⚠️ pdflatex non trouvé ou erreur. Passage en mode ONLINE.")
+        except:
+            pass
 
+        # 2. Try pdflatex (Local fallback)
+        if not compiled:
+            try:
+                subprocess.run(["pdflatex", "--version"], capture_output=True, check=True)
+                logger.info("🚀 Compilation avec pdflatex...")
+                cmd = ["pdflatex", "-interaction=nonstopmode", f"-output-directory={session_dir}", str(tex_path)]
+                subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                if pdf_path.exists():
+                    compiled = True
+            except:
+                pass
+
+        # 3. Try Online APIs (Cloud fallback)
         if not compiled:
             compiled = self.compile_latex_online(generated_latex_code, pdf_path)
 
         if not compiled or not pdf_path.exists():
-            raise RuntimeError("La compilation LaTeX a échoué (Local et Online).")
+            raise RuntimeError("La compilation LaTeX a échoué sur tous les moteurs (Tectonic, Local et Online).")
 
         return str(pdf_path), str(tex_path)

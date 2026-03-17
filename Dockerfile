@@ -6,19 +6,25 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV WEB_CONCURRENCY=1
-# Default to dev, can be overridden to 'prod' in docker-compose or render
-ENV ENV_STATE=dev 
+ENV ENV_STATE=prod
 
 # Set the working directory
 WORKDIR /app
 
-# Install only essential system dependencies
+# Install essential system dependencies and Tectonic
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
     libgl1-mesa-glx \
     curl \
     git \
+    ca-certificates \
+    libfontconfig1 \
+    libgraphite2-3 \
+    libharfbuzz0b \
+    libicu67 \
+    && curl --proto '=https' --tlsv1.2 -sSf https://drop-sh.fullyjustified.net | sh \
+    && mv tectonic /usr/local/bin/ \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first to leverage Docker cache
@@ -33,12 +39,8 @@ COPY . .
 # Ensure necessary directories exist
 RUN mkdir -p outputs/generated_cvs data/img/uploads
 
-# Persistence Note: 
-# To persist the database, mount a volume to /app/data or use a Postgres URL.
-# Example: docker run -v ./data:/app/data -e DATABASE_URL=sqlite:////app/data/rezume.db ...
-
 # Expose port (Render standard)
 EXPOSE 10000
 
 # Start command: Single worker, high timeout for AI stability
-CMD ["gunicorn", "-w", "1", "-k", "uvicorn.workers.UvicornWorker", "api:app", "--bind", "0.0.0.0:10000", "--timeout", "120"]
+CMD ["gunicorn", "-w", "1", "-k", "uvicorn.workers.UvicornWorker", "api:app", "--bind", "0.0.0.0:10000", "--timeout", "180"]
