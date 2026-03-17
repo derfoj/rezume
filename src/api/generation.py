@@ -90,10 +90,14 @@ def background_generate_cv(job_id: str, request: CVGenerationRequest, user_id: i
         db.commit()
 
     except Exception as e:
-        logger.error(f"Background Generation Failed: {e}")
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"❌ Background Generation Failed for Job {job_id}: {e}\n{error_details}")
         log_entry = db.query(UsageLog).filter(UsageLog.id == int(job_id)).first()
         if log_entry:
             log_entry.status = "error"
+            # We use the model field to store a hint about the error for debugging
+            log_entry.model = f"Error: {str(e)[:100]}"
             db.commit()
     finally:
         db.close()

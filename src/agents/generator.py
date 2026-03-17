@@ -121,24 +121,28 @@ class GeneratorAgent:
     def compile_latex_online(self, latex_code: str, output_path: Path) -> bool:
         """
         Fallback compilation using LatexOnline API.
-        URL format: https://latexonline.cc/compile?text=YOUR_CODE
+        Uses POST with files (multipart/form-data) as recommended for larger documents.
         """
-        import urllib.parse
         base_url = os.getenv("LATEX_ONLINE_URL", "https://latexonline.cc/compile")
-        logger.info(f"🌐 Tentative de compilation via {base_url} (GET)...")
+        logger.info(f"🌐 Tentative de compilation via {base_url} (POST File)...")
         try:
-            # For GET request, we need to encode the text
-            params = {'text': latex_code}
-            query_string = urllib.parse.urlencode(params)
-            full_url = f"{base_url}?{query_string}"
+            # Using multipart/form-data with 'file' key
+            # We also add force=true to avoid cached error pages
+            files = {'file': ('main.tex', latex_code, 'text/x-tex')}
+            params = {'force': 'true', 'command': 'pdflatex'}
             
-            response = requests.get(full_url, timeout=45)
+            response = requests.post(base_url, files=files, params=params, timeout=60)
+            
             if response.status_code == 200 and len(response.content) > 500: # Basic check for a real PDF
                 with open(output_path, "wb") as f:
                     f.write(response.content)
+                logger.info(f"✅ PDF généré avec succès via LatexOnline ({len(response.content)} bytes)")
                 return True
             else:
                 logger.error(f"LatexOnline failed: Status {response.status_code}, Content-Length {len(response.content)}")
+                # Log a snippet of the response for debugging (it might be a LaTeX error log)
+                if response.text:
+                    logger.error(f"Response snippet: {response.text[:500]}")
                 return False
         except Exception as e:
             logger.error(f"Error connecting to LatexOnline: {e}")
