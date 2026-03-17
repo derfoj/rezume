@@ -23,7 +23,8 @@ RUN apt-get update && \
     libgraphite2-3 \
     libharfbuzz0b \
     libicu67 \
-    && curl --proto '=https' --tlsv1.2 -sSf https://drop-sh.fullyjustified.net | sh \
+    wget \
+    && curl -L https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.15.0/tectonic-0.15.0-x86_64-unknown-linux-musl.tar.gz | tar -xz \
     && mv tectonic /usr/local/bin/ \
     && rm -rf /var/lib/apt/lists/*
 
