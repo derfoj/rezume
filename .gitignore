@@ -27,7 +27,7 @@ outputs/
 
 # convertisseur latex en python
 rezume_miktex/
-
+swiftlatex/
 #gitignore
 *.gitignore
 
@@ -42,6 +42,8 @@ presentation.txt
 
 #test 
 .pytest_cache/
+#gemini_files
+.gemini_secutiry/   
 
 #json et faiss 
 *.json

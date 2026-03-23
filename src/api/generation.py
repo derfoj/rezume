@@ -3,7 +3,7 @@ import os
 import logging
 import uuid
 import json
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Optional
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -19,7 +19,6 @@ from src.models.user import User
 from src.models.usage import UsageLog
 from src.config.constants import TEMPLATES_DIR
 from src.core.orchestration import _rank_skills_by_relevance
-from src.core.cv_validator import validate_cv
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -34,7 +33,7 @@ async def get_templates():
     templates = [
         {"id": "modern", "name": "Moderne", "description": "Design épuré et professionnel.", "preview": "modern_preview.svg"},
         {"id": "photo_header", "name": "Avec Photo", "description": "Mise en avant de votre profil avec photo.", "preview": "photo_preview.svg"},
-        {"id": "classic", "name": "Classique", "description": "Structure traditionnelle et efficace (sans photo).", "preview": "modern_preview.svg"} # Use modern as fallback if classic preview is missing
+        {"id": "classic", "name": "Classique", "description": "Structure traditionnelle et efficace (sans photo).", "preview": "modern_preview.svg"}
     ]
     return templates
 
@@ -52,9 +51,10 @@ def _profile_to_dict(profile: Profile) -> Dict[str, Any]:
         "languages": [to_dict(lang) for lang in profile.languages],
     }
 
-def background_generate_cv(job_id: str, request: CVGenerationRequest, user_id: int):
+def background_generate_cv(job_id: str, request: CVGenerationRequest, user_id: int, feedback: Optional[str] = None):
     """
-    Worker function with retry logic for 1-page constraint.
+    Worker function that generates the LaTeX source.
+    The frontend handles compilation and 1-page validation.
     """
     db = SessionLocal()
     try:
@@ -64,7 +64,7 @@ def background_generate_cv(job_id: str, request: CVGenerationRequest, user_id: i
         user_profile = get_profile_from_db(db, user_id=user_id)
         current_user = db.query(User).filter(User.id == user_id).first()
         
-        # 1. Ranking skills
+        # 1. Ranking skills if needed
         if request.job_offer_text and user_profile.skills:
             try:
                 user_profile.skills = _rank_skills_by_relevance(user_profile.skills, request.job_offer_text, top_n=15)
@@ -76,38 +76,20 @@ def background_generate_cv(job_id: str, request: CVGenerationRequest, user_id: i
             api_key=current_user.openai_api_key if current_user.llm_provider == "openai" else None
         )
         
-        # Retry loop for 1-page constraint
-        max_retries = 2
-        pdf_path, tex_path = None, None
+        logger.info(f"Generating LaTeX source for Job {job_id}")
         
-        for attempt in range(max_retries):
-            logger.info(f"Generation attempt {attempt + 1} for Job {job_id}")
-            
-            # On second attempt, force extreme conciseness
-            feedback = None
-            if attempt > 0:
-                feedback = "Le CV précédent était trop long (plus d'une page). RESTE SUR UNE SEULE PAGE. Sois très concis, élimine le superflu."
-
-            pdf_path, tex_path = generator.generate_cv_from_llm(
-                user_profile=_profile_to_dict(user_profile),
-                experiences=request.experiences,
-                template_name=current_user.selected_template or "modern",
-                feedback=feedback
-            )
-            
-            # Validate page count
-            validation = validate_cv(tex_path)
-            if validation["valid"]:
-                logger.info(f"✅ CV validated (1 page) on attempt {attempt + 1}")
-                break
-            else:
-                logger.warning(f"⚠️ CV validation failed: {validation['warnings']}")
-                if attempt == max_retries - 1:
-                    raise RuntimeError(f"Impossible de générer un CV sur une seule page après {max_retries} tentatives.")
-
+        # Generator handles source generation and local file saving for audit
+        latex_code = generator.generate_latex_source(
+            user_profile=_profile_to_dict(user_profile),
+            experiences=request.experiences,
+            template_name=current_user.selected_template or "modern",
+            feedback=feedback,
+            session_id=job_id
+        )
+        
         # 3. Finalize
         log_entry.status = "success"
-        log_entry.model = pdf_path
+        log_entry.model = str(Path("outputs/generated_cvs") / job_id / f"cv_{job_id}.tex")
         db.commit()
 
     except Exception as e:
@@ -139,31 +121,48 @@ async def generate_cv_endpoint(
     db.commit()
     db.refresh(log_entry)
     
-    background_tasks.add_task(background_generate_cv, str(log_entry.id), request, current_user.id)
+    background_tasks.add_task(background_generate_cv, str(log_entry.id), request, current_user.id, request.feedback)
     
-    return {"job_id": str(log_entry.id), "message": "Génération lancée."}
+    return {"job_id": str(log_entry.id), "message": "Génération de la source LaTeX lancée."}
 
 @router.get("/status/{job_id}")
-async def get_job_status(job_id: str, db: Session = Depends(get_db)):
+async def get_job_status(
+    job_id: str, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     log = db.query(UsageLog).filter(UsageLog.id == int(job_id)).first()
     if not log:
         raise HTTPException(status_code=404, detail="Inconnu")
+    
+    # Ownership check
+    if log.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Accès refusé.")
+        
     return {"status": log.status, "progress": 100 if log.status == "success" else 50}
 
-@router.get("/download/{job_id}")
-async def download_cv(job_id: str, inline: bool = False, db: Session = Depends(get_db)):
+@router.get("/latex/{job_id}")
+async def get_latex_source(
+    job_id: str, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Returns the LaTeX source code for a generated CV.
+    """
     log = db.query(UsageLog).filter(UsageLog.id == int(job_id)).first()
     if not log or log.status != "success":
-        raise HTTPException(status_code=400, detail="Non prêt")
+        raise HTTPException(status_code=400, detail="CV non généré ou erreur.")
     
-    headers = {}
-    if inline:
-        # 'inline' tells the browser to try and show the file inside the page
-        headers["Content-Disposition"] = "inline"
+    # Ownership check
+    if log.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Accès refusé.")
     
-    return FileResponse(
-        path=log.model, 
-        filename="reZume_CV.pdf" if not inline else None,
-        media_type='application/pdf',
-        headers=headers
-    )
+    tex_path = Path(log.model)
+    if not tex_path.exists():
+        raise HTTPException(status_code=404, detail="Source LaTeX introuvable.")
+    
+    with open(tex_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    
+    return {"latex": content}

@@ -3,6 +3,8 @@ from src.agents.generator import clean_unicode_for_latex, sanitize_data_recursiv
 
 def test_clean_unicode():
     assert clean_unicode_for_latex("Développeur 1ᵉʳ") == "Développeur 1\\textsuperscript{e}r"
+    # Explicit test for superscript r
+    assert clean_unicode_for_latex("1ʳ") == "1r"
     assert clean_unicode_for_latex("Coût: 100€") == "Coût: 100\\euro{}"
     assert clean_unicode_for_latex("«hello»") == "\\guillemotleft{}hello\\guillemotright{}"
 

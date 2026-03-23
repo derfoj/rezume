@@ -22,3 +22,5 @@ class CVGenerationRequest(BaseModel):
     experiences: List[Dict[str, Any]]
     job_offer_text: Optional[str] = None
     generation_id: Optional[str] = None
+    latex_only: bool = True
+    feedback: Optional[str] = None

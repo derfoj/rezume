@@ -1,7 +1,7 @@
 from pathlib import Path
 
 # Define the absolute path to the project's root directory.
-# This makes all file paths robust and independent of the current working directory.
+# This makes all file paths robust and independent of the current working director
 # __file__ -> constants.py
 # .parent -> config/
 # .parent -> src/

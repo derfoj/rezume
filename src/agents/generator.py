@@ -1,10 +1,8 @@
 # src/agents/generator.py
 import os
 import json
-import subprocess
-import uuid
 import logging
-import requests
+import uuid
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -20,6 +18,7 @@ def clean_unicode_for_latex(text: str) -> str:
     """
     replacements = {
         "ᵉ": r"\textsuperscript{e}",
+        "ʳ": "r",
         "¹": r"\textsuperscript{1}",
         "²": r"\textsuperscript{2}",
         "³": r"\textsuperscript{3}",
@@ -48,8 +47,13 @@ def escape_latex_special_chars(text: str) -> str:
     if not isinstance(text, str):
         return text
 
-    chars = {
-        "\\": r"\textbackslash{}", # Must be first to avoid escaping escapes
+    # We use a mapping and replace in one go or use a strategy that doesn't re-escape
+    # The safest way is to use a regex or a very specific order.
+    # Here we escape the special chars EXCEPT backslash first, then backslash.
+    # Actually, the standard way is to use a map and a regex.
+    
+    import re
+    map = {
         "&": r"\&",
         "%": r"\%",
         "$": r"\$",
@@ -59,12 +63,12 @@ def escape_latex_special_chars(text: str) -> str:
         "}": r"\}",
         "~": r"\textasciitilde{}",
         "^": r"\textasciicircum{}",
+        "\\": r"\textbackslash{}"
     }
-
-    # Simple replacement loop
-    for char, escaped in chars.items():
-        text = text.replace(char, escaped)
-    return text
+    
+    # Regex to match any of the keys in map (escaping backslash for regex)
+    regex = re.compile("|".join(re.escape(k) for k in map.keys()))
+    return regex.sub(lambda m: map[m.group(0)], text)
 
 def sanitize_data_recursive(data, skip_keys=None):
     """Recursively sanitizes dictionary or list values."""
@@ -85,8 +89,8 @@ def sanitize_data_recursive(data, skip_keys=None):
 
 class GeneratorAgent:
     """
-    An agent responsible for generating the final LaTeX CV by calling an LLM
-    with a complete context, then compiling the result to PDF.
+    An agent responsible for generating the final LaTeX CV source code.
+    The compilation is now handled by the frontend via SwiftLaTeX (WASM).
     """
     def __init__(self, provider: str = None, model: str = None, api_key: str = None):
         try:
@@ -118,81 +122,19 @@ class GeneratorAgent:
 
         return latex_code.strip()
 
-    def compile_latex_online(self, latex_code: str, output_path: Path) -> bool:
+    def generate_latex_source(self, user_profile: Dict[str, Any], experiences: List[Dict[str, Any]], template_name: str = "modern", feedback: str = None, session_id: str = None) -> str: 
         """
-        Fallback compilation using TexLive.net API (more stable than LatexOnline).
-        """
-        api_url = "https://texlive.net/cgi-bin/latexcgi"
-        logger.info(f"🌐 Tentative de compilation via {api_url} (Fallback)...")
-        try:
-            # TexLive.net expects 'filecontents[]' and 'filename[]'
-            payload = {
-                'filecontents[]': latex_code,
-                'filename[]': 'main.tex',
-                'engine': 'pdflatex',
-                'return': 'pdf'
-            }
-            
-            response = requests.post(api_url, data=payload, timeout=60)
-            
-            if response.status_code == 200 and response.headers.get('Content-Type') == 'application/pdf':
-                with open(output_path, "wb") as f:
-                    f.write(response.content)
-                logger.info(f"✅ PDF généré avec succès via TexLive.net ({len(response.content)} bytes)")
-                return True
-            
-            # If TexLive.net fails, try the old LatexOnline as a last resort
-            logger.warning("TexLive.net failed, trying LatexOnline as last resort...")
-            base_url = "https://latexonline.cc/compile"
-            files = {'file': ('main.tex', latex_code, 'text/x-tex')}
-            params = {'force': 'true', 'command': 'pdflatex'}
-            response = requests.post(base_url, files=files, params=params, timeout=60)
-            
-            if response.status_code == 200 and len(response.content) > 500:
-                with open(output_path, "wb") as f:
-                    f.write(response.content)
-                return True
-                
-            return False
-        except Exception as e:
-            logger.error(f"Online compilation error: {e}")
-            return False
-
-    def generate_cv_from_llm(self, user_profile: Dict[str, Any], experiences: List[Dict[str, Any]], template_name: str = "modern", feedback: str = None, session_id: str = None) -> (str, str): 
-        """
-        Generates a PDF CV.
+        Generates LaTeX source code.
         """
         if not self.llm:
             raise RuntimeError("GeneratorAgent non initialisé.")
 
-        # Resolve photo_path (Keep logic from local_version)
-        if "photo_path" in user_profile and user_profile["photo_path"]:
-            photo_name = user_profile["photo_path"]
-            avatar_map = {
-                "man_laptop": "avatar_man_laptop.png",
-                "woman_laptop": "avatar_woman_laptop.png",
-                "man_coffee": "avatar_man_coffee.png",
-                "woman_rocket": "avatar_woman_rocket.png",
-                "marc_aurel": "the_marc_aurel.png",
-                "avatar_femme": "avatar_femme.png"
-            }
-            if photo_name in avatar_map:
-                photo_name = avatar_map[photo_name]
-
-            candidates = [
-                Path("frontend/src/assets") / photo_name,
-                Path("data/img") / photo_name,
-            ]
-            resolved_path = None
-            for cand in candidates:
-                if cand.exists():
-                    resolved_path = cand.resolve()
-                    break
-            
-            if resolved_path:
-                user_profile["photo_path"] = str(resolved_path).replace("\\", "/")
-            else:
-                user_profile["photo_path"] = ""
+        # Always use standard path for the photo in LaTeX code
+        # The frontend SwiftLaTeX component will inject the actual image into this virtual path.
+        if user_profile.get("photo_path") or user_profile.get("photo_cv"):
+            user_profile["photo_path"] = "photo_cv.png"
+        else:
+            user_profile["photo_path"] = ""
 
         safe_profile = sanitize_data_recursive(user_profile, skip_keys={"photo_path"})
         safe_experiences = sanitize_data_recursive(experiences)
@@ -227,52 +169,15 @@ class GeneratorAgent:
             generated_latex_code = self.llm.chat(final_prompt)
             generated_latex_code = clean_unicode_for_latex(generated_latex_code)
             generated_latex_code = self._clean_llm_output(generated_latex_code)
+            
+            # Directory management for logging/audit
+            unique_id = session_id or str(uuid.uuid4())
+            session_dir = Path("outputs/generated_cvs") / unique_id
+            session_dir.mkdir(parents=True, exist_ok=True)
+            tex_path = session_dir / f"cv_{unique_id}.tex"
+            with open(tex_path, "w", encoding="utf-8") as f:
+                f.write(generated_latex_code)
+                
+            return generated_latex_code
         except Exception as e:
             raise RuntimeError(f"L'IA a échoué: {e}")
-
-        # Directory management
-        unique_id = session_id or str(uuid.uuid4())
-        session_dir = Path("outputs/generated_cvs") / unique_id
-        session_dir.mkdir(parents=True, exist_ok=True)
-
-        tex_path = session_dir / f"cv_{unique_id}.tex"
-        pdf_path = session_dir / f"cv_{unique_id}.pdf"
-
-        with open(tex_path, "w", encoding="utf-8") as f:
-            f.write(generated_latex_code)
-
-        # --- MULTI-ENGINE COMPILATION ---
-        compiled = False
-        
-        # 1. Try Tectonic (Recommended for Docker/Production)
-        try:
-            subprocess.run(["tectonic", "--version"], capture_output=True, check=True)
-            logger.info("🚀 Compilation avec Tectonic...")
-            cmd = ["tectonic", "-o", str(session_dir), str(tex_path)]
-            subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-            if pdf_path.exists():
-                compiled = True
-        except:
-            pass
-
-        # 2. Try pdflatex (Local fallback)
-        if not compiled:
-            try:
-                subprocess.run(["pdflatex", "--version"], capture_output=True, check=True)
-                logger.info("🚀 Compilation avec pdflatex...")
-                cmd = ["pdflatex", "-interaction=nonstopmode", f"-output-directory={session_dir}", str(tex_path)]
-                subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-                subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-                if pdf_path.exists():
-                    compiled = True
-            except:
-                pass
-
-        # 3. Try Online APIs (Cloud fallback)
-        if not compiled:
-            compiled = self.compile_latex_online(generated_latex_code, pdf_path)
-
-        if not compiled or not pdf_path.exists():
-            raise RuntimeError("La compilation LaTeX a échoué sur tous les moteurs (Tectonic, Local et Online).")
-
-        return str(pdf_path), str(tex_path)
