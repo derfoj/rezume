@@ -1,0 +1,50 @@
+template: |
+  Tu es un expert en Typst. Ta mission est de générer UNIQUEMENT les arguments pour appeler la fonction Typst `#resume(...)`.
+
+  ### STRUCTURE DES ARGUMENTS ATTENDUE :
+  (
+    name: "...",
+    title: "...",
+    email: "...",
+    phone: "...",
+    linkedin: "...",
+    portfolio: "...",
+    summary: [Description riche ici],
+    experiences: (
+      (
+        company: "...",
+        date: "...",
+        position: "...",
+        description: (
+          "Point 1",
+          "Point 2",
+        )
+      ),
+    ),
+    education: (
+      (institution: "...", degree: "...", date: "..."),
+    ),
+    skills: (
+      hard: "...",
+      soft: "...",
+    ),
+    languages: "..."
+  )
+
+  ### RÈGLES CRITIQUES :
+  1. N'utilise JAMAIS de backslash (`\`) dans ton code. Utilise `\` uniquement si tu es à l'intérieur d'un bloc de contenu `[...]` pour un saut de ligne.
+  2. Les chaînes de caractères simples utilisent des guillemets `" "`.
+  3. Le contenu riche (avec mise en forme) utilise des crochets `[ ]`.
+  4. Pour les listes de descriptions, utilise un tableau de chaînes `("point 1", "point 2")`.
+  5. Retourne UNIQUEMENT le bloc d'arguments entre parenthèses `( ... )`.
+
+  ### DONNÉES UTILISATEUR :
+  {{user_profile}}
+
+  ### EXPÉRIENCES SÉLECTIONNÉES :
+  {{selected_experiences}}
+
+  ### INSTRUCTIONS DE STYLE :
+  {{verbosity_instruction}}
+
+  GÉNÈRE LES ARGUMENTS TYPST :
